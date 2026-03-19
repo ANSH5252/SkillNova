@@ -1,16 +1,66 @@
-# React + Vite
+# 🚀 SkillNova – AI-Powered ATS Simulator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SkillNova is an **AI-driven Applicant Tracking System (ATS) simulator** that helps students and job seekers understand *why their resumes get rejected* and how to improve them before applying.
 
-Currently, two official plugins are available:
+Instead of applying blindly, users receive **data-driven insights, ATS scores, and actionable feedback**—just like a real hiring system.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 📌 Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 🔍 Resume Analysis
+- Upload your resume (PDF)
+- AI evaluates based on real ATS standards
+- Detects:
+  - Missing technical skills
+  - Keyword gaps
+  - Formatting issues
+  - Content weaknesses
 
-## Expanding the ESLint configuration
+### 📊 ATS Scoring
+- Generates a **strict ATS score**
+- Mimics real-world hiring filters
+- Helps users understand their selection probability
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### ✍️ AI Cover Letter Generator
+- Generates **role-specific cover letters**
+- Compensates for resume weaknesses
+- Improves chances of shortlisting
+
+### 🔐 Privacy-First Design
+- **Client-side PDF parsing**
+- No resume data is stored or uploaded
+- Fully secure and user-focused
+
+### 🏫 B2B Dashboard (For Institutions)
+- Aggregated analytics of student performance
+- Identifies:
+  - Skill gaps across cohorts
+  - Industry demand trends
+- Helps universities align curriculum with job market
+
+---
+
+## 🧠 Tech Stack
+
+- **Frontend:** React / Next.js  
+- **Backend:** FastAPI / Node.js  
+- **AI Engine:** Groq Cloud + Llama 3.1  
+- **PDF Parsing:** pdf.js (client-side)  
+- **Database (optional):** MongoDB / PostgreSQL  
+
+---
+
+## ⚙️ How It Works
+
+1. User uploads resume (PDF)
+2. Resume is parsed **on the client side**
+3. Extracted content is sent to AI engine
+4. AI performs:
+   - Skill matching
+   - Keyword analysis
+   - Formatting checks
+5. System generates:
+   - ATS Score
+   - Detailed feedback
+   - Cover letter (optional)
