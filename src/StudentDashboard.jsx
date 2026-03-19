@@ -225,25 +225,32 @@ export default function StudentDashboard() {
       const groq = new Groq({ apiKey: import.meta.env.VITE_GROQ_API_KEY, dangerouslyAllowBrowser: true });
 
       const prompt = `
-        You are an expert career coach. Write a compelling, professional cover letter for a candidate applying for: "${finalJobTarget}".
-        
-        Candidate's Resume Text:
-        ${extractedText}
-        
-        Context: The candidate's resume is currently missing these key skills: ${aiResult.missingKeywords.join(', ')}.
-        
-        Instructions:
-        1. Write a confident, engaging cover letter.
-        2. DO NOT apologize for missing skills. Instead, frame them positively—mention that the candidate is highly adaptable, a fast learner, and is actively eager to master those specific technologies.
-        3. Highlight their existing strengths from their resume.
-        4. Keep it to 3 concise paragraphs.
-        5. Output ONLY the raw text of the cover letter. No markdown formatting.
+        You are a strict enterprise ATS parsing engine analyzing a resume for: "${finalJobTarget}".
+
+        Extracted Text:
+        ${extractedResumeText}
+
+        SCORING RULES (CRITICAL):
+        1. Technical Match (roleMatchScore): Start at 100. Deduct exactly 15 points for every missing core skill.
+        2. ATS Readability (atsFormatScore): Start at 95. Deduct 13 points if contact info is messy. Deduct 17 points if section headers (Experience, Education) are unclear. Deduct 22 points if bullet points are missing or text is a giant block.
+        3. ANTI-80 DIRECTIVE: You are strictly forbidden from outputting the number 80 or 80% for either score. You MUST calculate exact, dynamic integers (e.g., 67, 74, 86, 92).
+
+        Provide ONLY a JSON object. No markdown.
+        {
+          "atsFormatScore": <Integer between 40 and 95. MUST NOT BE 80>,
+          "formatMessage": "<Specific critique of the text structure>",
+          "roleMatchScore": <Integer between 30 and 100>,
+          "verdict": "<Short verdict e.g., 'Needs Upskilling'>",
+          "missingKeywords": ["<Skill 1>", "<Skill 2>"],
+          "microActions": ["<Action 1>", "<Action 2>"]
+        }
       `;
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
         model: "llama-3.1-8b-instant",
-        temperature: 0.5, // Slightly higher for creative writing
+        temperature: 0.6, // Increased for score variance
+        response_format: { type: "json_object" } // Forces the model to strictly output valid JSON
       });
 
       setCoverLetter(chatCompletion.choices[0]?.message?.content || "Failed to generate letter.");
