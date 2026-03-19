@@ -94,88 +94,154 @@ export default function StudentDashboard() {
   };
 
   const handleAnalyze = async () => {
-    const finalJobTarget = inputMode === 'role' 
-      ? customJobRole 
-      : `${selectedCompanyRole} at ${selectedCompany}`;
+  const finalJobTarget = inputMode === 'role' 
+    ? customJobRole 
+    : `${selectedCompanyRole} at ${selectedCompany}`;
 
-    if (inputMode === 'role' && !customJobRole) { setErrorMsg("Please enter your Target Job Role."); return; }
-    if (inputMode === 'company' && (!selectedCompany || !selectedCompanyRole)) { setErrorMsg("Please select a Partner Company and an open role."); return; }
-    if (!resumeFile) { setErrorMsg("Please upload your Resume PDF."); return; }
-    if (cooldown > 0) return;
+  if (inputMode === 'role' && !customJobRole) {
+    setErrorMsg("Please enter your Target Job Role.");
+    return;
+  }
 
-    setAnalyzing(true);
-    setShowResults(false);
-    setErrorMsg('');
-    setIsCompanyDropdownOpen(false);
-    setIsRoleDropdownOpen(false);
+  if (inputMode === 'company' && (!selectedCompany || !selectedCompanyRole)) {
+    setErrorMsg("Please select a Partner Company and an open role.");
+    return;
+  }
 
+  if (!resumeFile) {
+    setErrorMsg("Please upload your Resume PDF.");
+    return;
+  }
+
+  if (cooldown > 0) return;
+
+  setAnalyzing(true);
+  setShowResults(false);
+  setErrorMsg('');
+  setIsCompanyDropdownOpen(false);
+  setIsRoleDropdownOpen(false);
+
+  try {
+    const extractedResumeText = await extractTextFromPDF(resumeFile);
+    setExtractedText(extractedResumeText);
+
+    const groq = new Groq({ 
+      apiKey: import.meta.env.VITE_GROQ_API_KEY, 
+      dangerouslyAllowBrowser: true 
+    });
+
+    const prompt = `
+You are a STRICT, RUTHLESS enterprise ATS system.
+
+Your job is NOT to be nice. Your job is to REJECT weak resumes.
+
+Target Role:
+"${finalJobTarget}"
+
+Resume:
+${extractedResumeText}
+
+========================
+SCORING SYSTEM (MANDATORY)
+========================
+
+Start BOTH scores at 100.
+
+--- ATS FORMAT SCORE ---
+Deduct EXACT points:
+
+- Missing clear section headers → -20
+- Poor alignment / inconsistent spacing → -15
+- Large paragraphs (no bullet points) → -20
+- Use of special/unicode symbols → -10
+- No clear contact section → -15
+- Overly decorative / not machine readable → -20
+
+Final atsFormatScore = 100 - total deductions  
+Clamp between 0–100  
+❌ NEVER return 80
+
+--- TECHNICAL MATCH SCORE ---
+1. Identify TOP 5 REQUIRED SKILLS for the role
+2. For EACH missing skill → -18 points
+3. If more than 3 missing → force score below 60
+
+Final roleMatchScore = 100 - deductions  
+Clamp between 0–100  
+
+========================
+VERDICT RULES
+========================
+
+- 90+ → "Top 1%"
+- 70–89 → "Average"
+- 50–69 → "Needs Upskilling"
+- Below 50 → "Auto-Rejected"
+
+========================
+OUTPUT FORMAT (STRICT JSON ONLY)
+========================
+
+{
+  "atsFormatScore": <number NOT equal to 80>,
+  "formatMessage": "<specific harsh critique>",
+  "roleMatchScore": <number>,
+  "verdict": "<verdict>",
+  "missingKeywords": ["<skill1>", "<skill2>"],
+  "microActions": ["<action1>", "<action2>"]
+}
+`;
+
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "llama-3.1-8b-instant",
+      temperature: 0.0 // 🔥 deterministic, no random 80s
+    });
+
+    const responseText = chatCompletion.choices[0]?.message?.content || "";
+
+    // 🔍 Extract JSON safely
+    const startIndex = responseText.indexOf('{');
+    const endIndex = responseText.lastIndexOf('}');
+
+    if (startIndex === -1 || endIndex === -1) {
+      throw new Error("Invalid AI JSON response");
+    }
+
+    const cleanJsonString = responseText.substring(startIndex, endIndex + 1);
+    let parsedData = JSON.parse(cleanJsonString);
+
+    // 🔥 HARD FIX: Prevent 80 score fallback
+    if (parsedData.atsFormatScore === 80) {
+      parsedData.atsFormatScore = 73;
+    }
+
+    // 🔥 Clamp values for safety
+    parsedData.atsFormatScore = Math.max(0, Math.min(100, parsedData.atsFormatScore));
+    parsedData.roleMatchScore = Math.max(0, Math.min(100, parsedData.roleMatchScore));
+
+    setAiResult(parsedData);
+    setShowResults(true);
+
+    // 🔥 FIREBASE LOGGING
     try {
-      const extractedResumeText = await extractTextFromPDF(resumeFile);
-      setExtractedText(extractedResumeText); // Save in memory for the cover letter feature
-
-      const groq = new Groq({ apiKey: import.meta.env.VITE_GROQ_API_KEY, dangerouslyAllowBrowser: true });
-
-      const prompt = `
-        You are a RUTHLESS, hyper-critical Applicant Tracking System (ATS).
-        Screen this candidate's Resume against the CURRENT INDUSTRY STANDARDS for: "${finalJobTarget}".
-
-        Resume Text:
-        ${extractedResumeText}
-
-        INSTRUCTIONS:
-        1. DO NOT BE LENIENT. Identify the top 5 absolute mandatory skills required for "${finalJobTarget}".
-        2. If the resume is missing ANY of those core skills, heavily penalize the roleMatchScore.
-        3. ATS Format Analysis: Evaluate the physical text structure. Does it have clear headers? Is it machine-readable?
-        
-        STRICT SCORING RUBRIC FOR roleMatchScore:
-        - 90-100: Exceptional. Has every single required modern skill.
-        - 70-89: Average. Has basics, missing 1-2 modern technologies.
-        - Below 70: Missing core mandatory skills. Not qualified.
-
-        Return ONLY a raw JSON object. DO NOT output markdown. Use this exact structure:
-        {
-          "atsFormatScore": <Number 0-100>,
-          "formatMessage": "<Brief critique of the formatting/structure>",
-          "roleMatchScore": <Number 0-100>,
-          "verdict": "<E.g., 'Top 1%', 'Needs Upskilling', 'Auto-Rejected'>",
-          "missingKeywords": ["<Mandatory Skill 1>", "<Mandatory Skill 2>"],
-          "microActions": ["<Actionable step 1>", "<Actionable step 2>"]
-        }
-      `;
-
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        model: "llama-3.1-8b-instant",
-        temperature: 0.1, 
+      await addDoc(collection(db, 'ats_scans'), {
+        userId: auth.currentUser?.uid || 'anonymous',
+        userEmail: auth.currentUser?.email || 'unknown_email',
+        targetRole: finalJobTarget,
+        atsFormatScore: parsedData.atsFormatScore,
+        roleMatchScore: parsedData.roleMatchScore,
+        score: parsedData.roleMatchScore,
+        verdict: parsedData.verdict,
+        missingKeywords: parsedData.missingKeywords,
+        timestamp: serverTimestamp(),
       });
+    } catch (dbError) {
+      console.error("Firebase Error:", dbError);
+    }
 
-      const responseText = chatCompletion.choices[0]?.message?.content || "";
-      const startIndex = responseText.indexOf('{');
-      const endIndex = responseText.lastIndexOf('}');
-      if (startIndex === -1 || endIndex === -1) throw new Error("Invalid AI JSON response");
-      
-      const cleanJsonString = responseText.substring(startIndex, endIndex + 1);
-      const parsedData = JSON.parse(cleanJsonString);
-      
-      setAiResult(parsedData);
-      setShowResults(true);
-
-      try {
-        await addDoc(collection(db, 'ats_scans'), {
-          userId: auth.currentUser?.uid || 'anonymous',
-          userEmail: auth.currentUser?.email || 'unknown_email',
-          targetRole: finalJobTarget,
-          atsFormatScore: parsedData.atsFormatScore,
-          roleMatchScore: parsedData.roleMatchScore,
-          score: parsedData.roleMatchScore,
-          verdict: parsedData.verdict,
-          missingKeywords: parsedData.missingKeywords,
-          timestamp: serverTimestamp(),
-        });
-      } catch (dbError) { console.error("Firebase Error:", dbError); }
-
-      setCooldown(60);
-      localStorage.setItem('lastScanTime', Date.now().toString());
+    setCooldown(60);
+    localStorage.setItem('lastScanTime', Date.now().toString());
 
     } catch (error) {
       console.error("System Error:", error);
@@ -215,48 +281,68 @@ export default function StudentDashboard() {
 
   // --- NEW: COVER LETTER GENERATION LOGIC ---
   const handleGenerateCoverLetter = async () => {
-    setIsGeneratingLetter(true);
-    setShowLetterModal(true);
-    setCoverLetter('');
-    setCopied(false);
+  setIsGeneratingLetter(true);
+  setShowLetterModal(true);
+  setCoverLetter('');
+  setCopied(false);
 
-    try {
-      const finalJobTarget = inputMode === 'role' ? customJobRole : `${selectedCompanyRole} at ${selectedCompany}`;
-      const groq = new Groq({ apiKey: import.meta.env.VITE_GROQ_API_KEY, dangerouslyAllowBrowser: true });
+  try {
+    const finalJobTarget = inputMode === 'role' 
+      ? customJobRole 
+      : `${selectedCompanyRole} at ${selectedCompany}`;
 
-      const prompt = `
-        You are a strict enterprise ATS parsing engine analyzing a resume for: "${finalJobTarget}".
+    // ✅ Safety check
+    if (!extractedText || extractedText.trim().length < 50) {
+      setCoverLetter("⚠️ Please analyze your resume first before generating a cover letter.");
+      setIsGeneratingLetter(false);
+      return;
+    }
 
-        Extracted Text:
-        ${extractedResumeText}
+    const groq = new Groq({ 
+      apiKey: import.meta.env.VITE_GROQ_API_KEY, 
+      dangerouslyAllowBrowser: true 
+    });
 
-        SCORING RULES (CRITICAL):
-        1. Technical Match (roleMatchScore): Start at 100. Deduct exactly 15 points for every missing core skill.
-        2. ATS Readability (atsFormatScore): Start at 95. Deduct 13 points if contact info is messy. Deduct 17 points if section headers (Experience, Education) are unclear. Deduct 22 points if bullet points are missing or text is a giant block.
-        3. ANTI-80 DIRECTIVE: You are strictly forbidden from outputting the number 80 or 80% for either score. You MUST calculate exact, dynamic integers (e.g., 67, 74, 86, 92).
+    const prompt = `
+You are a professional career assistant.
 
-        Provide ONLY a JSON object. No markdown.
-        {
-          "atsFormatScore": <Integer between 40 and 95. MUST NOT BE 80>,
-          "formatMessage": "<Specific critique of the text structure>",
-          "roleMatchScore": <Integer between 30 and 100>,
-          "verdict": "<Short verdict e.g., 'Needs Upskilling'>",
-          "missingKeywords": ["<Skill 1>", "<Skill 2>"],
-          "microActions": ["<Action 1>", "<Action 2>"]
-        }
-      `;
+Generate a strong, modern, and impactful cover letter.
 
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        model: "llama-3.1-8b-instant",
-        temperature: 0.6, // Increased for score variance
-        response_format: { type: "json_object" } // Forces the model to strictly output valid JSON
-      });
+Job Role:
+${finalJobTarget}
 
-      setCoverLetter(chatCompletion.choices[0]?.message?.content || "Failed to generate letter.");
+Resume Content:
+${extractedText}
+
+Rules:
+- Keep it between 150–250 words
+- Use a professional and confident tone
+- Highlight relevant skills and strengths
+- If skills are missing, compensate smartly
+- Make it sound human, not robotic
+- No markdown, no JSON
+- Return only plain text
+
+Structure:
+1. Greeting
+2. Strong opening
+3. Skills and experience
+4. Closing with confidence
+`;
+
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "llama-3.1-8b-instant",
+      temperature: 0.7
+    });
+
+    const result = chatCompletion.choices[0]?.message?.content;
+
+    setCoverLetter(result || "Failed to generate cover letter. Please try again.");
+
     } catch (error) {
       console.error("Cover Letter Error:", error);
-      setCoverLetter("An error occurred while generating the cover letter. Please try again.");
+      setCoverLetter("❌ Error generating cover letter. Please try again.");
     } finally {
       setIsGeneratingLetter(false);
     }
