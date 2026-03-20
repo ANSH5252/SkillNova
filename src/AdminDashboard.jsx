@@ -14,10 +14,8 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    // 1. Create a query to get all scans, newest first
     const q = query(collection(db, 'ats_scans'), orderBy('timestamp', 'desc'));
 
-    // 2. Listen to the database in REAL-TIME
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const scanData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -26,13 +24,12 @@ export default function AdminDashboard() {
 
       setScans(scanData);
 
-      // 3. Crunch the numbers for the dashboard metrics
       if (scanData.length > 0) {
         const total = scanData.length;
-        const totalScore = scanData.reduce((acc, curr) => acc + (curr.score || 0), 0);
-        const passedCount = scanData.filter(s => s.score >= 75).length;
         
-        // Count up all the missing keywords to find the biggest skill gaps
+        const totalScore = scanData.reduce((acc, curr) => acc + (curr.roleMatchScore || curr.score || 0), 0);
+        const passedCount = scanData.filter(s => (s.roleMatchScore || s.score) >= 60).length;
+        
         const skillCounts = {};
         scanData.forEach(scan => {
           if (scan.missingKeywords) {
@@ -42,7 +39,6 @@ export default function AdminDashboard() {
           }
         });
 
-        // Sort skills by frequency and take the top 5
         const topSkills = Object.entries(skillCounts)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 5)
@@ -59,9 +55,14 @@ export default function AdminDashboard() {
       setLoading(false);
     });
 
-    // Cleanup the listener when the component unmounts
     return () => unsubscribe();
   }, []);
+
+  const getScoreColor = (score) => {
+    if (score >= 75) return 'text-emerald-400';
+    if (score >= 45) return 'text-amber-400';
+    return 'text-rose-500'; 
+  };
 
   if (loading) {
     return (
@@ -73,9 +74,8 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-200 p-8 font-sans">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         
-        {/* TOP NAVIGATION */}
         <div className="flex justify-between items-center mb-10 border-b border-slate-800 pb-6">
           <div>
             <h1 className="text-3xl font-bold text-white flex items-center gap-3">
@@ -89,7 +89,6 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* TOP METRICS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl">
             <div className="flex items-center gap-4 mb-2">
@@ -116,7 +115,7 @@ export default function AdminDashboard() {
               <div className="bg-emerald-500/20 p-3 rounded-lg">
                 <CheckCircle className="text-emerald-400 w-6 h-6" />
               </div>
-              <h3 className="text-slate-400 font-medium">Pass to Recruiter Rate</h3>
+              <h3 className="text-slate-400 font-medium">Viable Candidate Rate</h3>
             </div>
             <p className="text-4xl font-bold text-white ml-16">{stats.passRate}%</p>
           </div>
@@ -124,7 +123,6 @@ export default function AdminDashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* THE INVESTOR PITCH: SKILL GAP ANALYSIS */}
           <div className="lg:col-span-1 bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl flex flex-col">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <TrendingDown className="text-rose-400" />
@@ -152,7 +150,6 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* LIVE FEED OF SCANS */}
           <div className="lg:col-span-2 bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <Activity className="text-indigo-400" />
@@ -164,46 +161,100 @@ export default function AdminDashboard() {
                 <thead>
                   <tr className="border-b border-slate-700 text-slate-400 text-sm">
                     <th className="pb-3 font-medium">Student / Time</th>
-                    <th className="pb-3 font-medium">Match Score</th>
+                    <th className="pb-3 font-medium">Applied Role</th>
+                    <th className="pb-3 font-medium">Match %</th>
                     <th className="pb-3 font-medium">Verdict</th>
-                    <th className="pb-3 font-medium">Top Missing Skill</th>
+                    <th className="pb-3 font-medium">Validated Skills</th>
+                    <th className="pb-3 font-medium">Skill Gaps</th>
+                    <th className="pb-3 font-medium">Upskill Path</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {scans.map((scan) => (
-                    <tr key={scan.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                      <td className="py-4">
-                        <div className="font-medium text-slate-200">{scan.userEmail}</div>
-                        <div className="text-xs text-slate-500">
-                          {scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleString() : 'Just now'}
-                        </div>
-                      </td>
-                      <td className="py-4">
-                        <span className={`font-bold ${scan.score >= 75 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                          {scan.score}%
-                        </span>
-                      </td>
-                      <td className="py-4">
-                        {scan.score >= 75 ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md">
-                            <CheckCircle size={14} /> Passed
+                  {scans.map((scan) => {
+                    const actualScore = scan.roleMatchScore || scan.score || 0;
+                    return (
+                      <tr key={scan.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                        
+                        <td className="py-4 pr-2">
+                          <div className="font-medium text-slate-200 truncate max-w-[120px]">{scan.userEmail}</div>
+                          <div className="text-xs text-slate-500">
+                            {scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleString() : 'Just now'}
+                          </div>
+                        </td>
+
+                        <td className="py-4 pr-2">
+                          <span className="text-sm text-indigo-300 font-medium">
+                            {scan.targetRole || "Unknown Role"}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-400 bg-rose-400/10 px-2 py-1 rounded-md">
-                            <XCircle size={14} /> Rejected
+                        </td>
+
+                        <td className="py-4 pr-2">
+                          <span className={`font-bold ${getScoreColor(actualScore)}`}>
+                            {actualScore}%
                           </span>
-                        )}
-                      </td>
-                      <td className="py-4">
-                        <span className="text-sm text-slate-300 bg-slate-800 px-2 py-1 rounded">
-                          {scan.missingKeywords && scan.missingKeywords.length > 0 ? scan.missingKeywords[0] : 'None'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+
+                        <td className="py-4 pr-2">
+                          {actualScore >= 60 ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md">
+                              <CheckCircle size={14} /> Passed
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-400 bg-rose-400/10 px-2 py-1 rounded-md whitespace-nowrap">
+                              <XCircle size={14} /> Rejected
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-4 pr-2">
+                          <div className="flex flex-wrap gap-1 max-w-[120px]">
+                            {scan.foundSkills && scan.foundSkills.length > 0 ? (
+                              scan.foundSkills.slice(0, 2).map((skill, index) => (
+                                <span key={`found-${index}`} className="text-[10px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                  {skill}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-slate-500">None</span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-4 pr-2">
+                          <div className="flex flex-wrap gap-1 max-w-[120px]">
+                            {scan.missingKeywords && scan.missingKeywords.length > 0 ? (
+                              scan.missingKeywords.slice(0, 2).map((skill, index) => (
+                                <span key={`miss-${index}`} className="text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                  {skill}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-emerald-500 font-medium">None!</span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* NEW: Upskill Path Column */}
+                        <td className="py-4">
+                          <div className="flex flex-wrap gap-1 max-w-[120px]">
+                            {scan.recommendedSkills && scan.recommendedSkills.length > 0 ? (
+                              scan.recommendedSkills.slice(0, 2).map((skill, index) => (
+                                <span key={`upskill-${index}`} className="text-[10px] text-blue-300 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                  {skill}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-slate-500">N/A</span>
+                            )}
+                          </div>
+                        </td>
+                        
+                      </tr>
+                    );
+                  })}
                   {scans.length === 0 && (
                     <tr>
-                      <td colSpan="4" className="py-8 text-center text-slate-500">
+                      <td colSpan="7" className="py-8 text-center text-slate-500">
                         Waiting for first student scan...
                       </td>
                     </tr>
