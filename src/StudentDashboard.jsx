@@ -315,7 +315,7 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-medium mb-4">
             <Activity size={16} /> SkillNova Core Engine
           </div>
-          <h1 className="text-4xl font-bold text-white mb-4">Market-Based Rejection Simulator</h1>
+          <h1 className="text-4xl font-bold text-white mb-4">ATS Rejection Simulator</h1>
           <p className="text-slate-400 text-lg">See your exact hiring probability based on the skills you actually possess.</p>
         </header>
 
