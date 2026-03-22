@@ -9,7 +9,6 @@ export default function AdminDashboard() {
   
   const [revealedEmails, setRevealedEmails] = useState(new Set());
 
-  // Added uniqueUsers and avgMarketProb to our stats state
   const [stats, setStats] = useState({
     total: 0,
     uniqueUsers: 0,
@@ -122,15 +121,15 @@ export default function AdminDashboard() {
       
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
-        .custom-scrollbar { scrollbar-width: thin; scrollbar-color: #475569 #1e293b; }
+        .custom-scrollbar { scrollbar-width: thin; scrollbar-color: #475569 transparent; }
       `}} />
 
       <div className="max-w-[1600px] mx-auto">
         
-        {/* NEW TITLE & HEADER */}
+        {/* TOP NAVIGATION */}
         <div className="flex justify-between items-end mb-10 border-b border-slate-800 pb-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-3">
@@ -146,9 +145,8 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* NEW SLEEK 4-COLUMN METRICS CARDS */}
+        {/* METRICS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          
           <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center hover:border-blue-500/30 transition-colors group">
             <div>
               <p className="text-slate-400 text-sm font-medium mb-1">Total Scans</p>
@@ -198,7 +196,6 @@ export default function AdminDashboard() {
               <Target className="text-emerald-400" size={22} />
             </div>
           </div>
-
         </div>
 
         {/* MAIN DASHBOARD GRID */}
@@ -206,15 +203,13 @@ export default function AdminDashboard() {
           
           {/* LEFT SIDEBAR: ANALYTICS */}
           <div className="xl:col-span-3 space-y-6">
-            
             <div className="bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl flex flex-col">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <TrendingDown className="text-rose-400" size={20} />
                 Critical Skill Gaps
               </h3>
               <p className="text-xs text-slate-400 mb-6">Most frequent missing core requirements.</p>
-              
-              <div className="space-y-5 overflow-y-auto max-h-[380px] pr-2 custom-scrollbar">
+              <div className="space-y-5 overflow-y-auto max-h-[380px] pr-3 custom-scrollbar">
                 {stats.topSkills.length > 0 ? stats.topSkills.map((skill, index) => (
                   <div key={`gap-${index}`}>
                     <div className="flex justify-between text-xs mb-2">
@@ -237,8 +232,7 @@ export default function AdminDashboard() {
                 Top Recommended Upskills
               </h3>
               <p className="text-xs text-slate-400 mb-6">Technologies most frequently suggested by the AI to bridge candidate skill gaps.</p>
-              
-              <div className="space-y-5 overflow-y-auto max-h-[380px] pr-2 custom-scrollbar">
+              <div className="space-y-5 overflow-y-auto max-h-[380px] pr-3 custom-scrollbar">
                 {stats.topRecommended.length > 0 ? stats.topRecommended.map((skill, index) => (
                   <div key={`rec-${index}`}>
                     <div className="flex justify-between text-xs mb-2">
@@ -254,39 +248,40 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
-
           </div>
 
           {/* RIGHT PANEL: LIVE SCAN FEED */}
-          <div className="xl:col-span-9 bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl">
+          <div className="xl:col-span-9 bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl flex flex-col">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <Activity className="text-indigo-400" />
               Live Scan Feed
             </h3>
             
-            <div className="overflow-x-auto">
-              <table className="w-full text-left table-fixed border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-700 text-slate-400 text-sm">
-                    <th className="pb-3 font-medium w-[15%]">Student / Time</th>
-                    <th className="pb-3 font-medium w-[15%]">Applied Role</th>
-                    <th className="pb-3 font-medium w-[8%]">Match</th>
-                    <th className="pb-3 font-medium w-[8%]">Market</th>
-                    <th className="pb-3 font-medium w-[9%]">Verdict</th>
-                    <th className="pb-3 font-medium w-[15%]">Validated Skills</th>
-                    <th className="pb-3 font-medium w-[15%]">Skill Gaps</th>
-                    <th className="pb-3 font-medium w-[15%]">Upskill Path</th>
+            <div className="overflow-x-auto overflow-y-auto max-h-[950px] custom-scrollbar pr-2 rounded-xl">
+              <table className="w-full text-left table-fixed border-separate border-spacing-0 relative">
+                
+                <thead className="sticky top-0 z-20">
+                  <tr className="bg-slate-800/90 backdrop-blur-md text-slate-300 text-[11px] uppercase tracking-wider shadow-sm">
+                    <th className="py-4 pl-4 font-bold w-[16%] rounded-tl-lg border-b border-slate-700">Student / Time</th>
+                    <th className="py-4 pr-2 font-bold w-[14%] border-b border-slate-700">Applied Role</th>
+                    <th className="py-4 pr-2 font-bold w-[8%] border-b border-slate-700">Match</th>
+                    <th className="py-4 pr-2 font-bold w-[8%] border-b border-slate-700">Market</th>
+                    <th className="py-4 pr-2 font-bold w-[10%] border-b border-slate-700">Verdict</th>
+                    <th className="py-4 pr-2 font-bold w-[15%] border-b border-slate-700">Validated Skills</th>
+                    <th className="py-4 pr-2 font-bold w-[15%] border-b border-slate-700">Skill Gaps</th>
+                    <th className="py-4 pr-4 font-bold w-[14%] rounded-tr-lg border-b border-slate-700">Upskill Path</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/50">
+                
+                <tbody>
                   {scans.map((scan) => {
                     const actualScore = scan.roleMatchScore || scan.score || 0;
                     const isEmailRevealed = revealedEmails.has(scan.id);
 
                     return (
-                      <tr key={scan.id} className="hover:bg-slate-800/20 transition-colors">
+                      <tr key={scan.id} className="hover:bg-slate-800/30 transition-colors group">
                         
-                        <td className="py-4 pr-2">
+                        <td className="py-4 pl-4 pr-2 border-b border-slate-800/50">
                           <div 
                             className="font-medium text-slate-200 truncate cursor-pointer select-none hover:text-indigo-300 transition-colors"
                             onDoubleClick={() => handleDoubleClickEmail(scan.id)}
@@ -294,24 +289,24 @@ export default function AdminDashboard() {
                           >
                             {isEmailRevealed ? scan.userEmail : maskEmail(scan.userEmail)}
                           </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">
+                          <div className="text-[11px] text-slate-500 mt-0.5 group-hover:text-slate-400 transition-colors">
                             {scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleString() : 'Just now'}
                           </div>
                         </td>
 
-                        <td className="py-4 pr-2">
+                        <td className="py-4 pr-2 border-b border-slate-800/50">
                           <span className="text-sm text-indigo-300 font-medium line-clamp-2">
                             {scan.targetRole || "Unknown Role"}
                           </span>
                         </td>
 
-                        <td className="py-4 pr-2">
+                        <td className="py-4 pr-2 border-b border-slate-800/50">
                           <span className={`font-bold ${getScoreColor(actualScore)}`}>
                             {actualScore}%
                           </span>
                         </td>
 
-                        <td className="py-4 pr-2">
+                        <td className="py-4 pr-2 border-b border-slate-800/50">
                           {scan.marketProbability ? (
                             <span className={`font-bold ${getScoreColor(scan.marketProbability)}`}>
                               {scan.marketProbability}%
@@ -321,7 +316,7 @@ export default function AdminDashboard() {
                           )}
                         </td>
 
-                        <td className="py-4 pr-2">
+                        <td className="py-4 pr-2 border-b border-slate-800/50">
                           {actualScore >= 60 ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md">
                               <CheckCircle size={12} /> Passed
@@ -333,7 +328,7 @@ export default function AdminDashboard() {
                           )}
                         </td>
 
-                        <td className="py-4 pr-2">
+                        <td className="py-4 pr-2 border-b border-slate-800/50">
                           <div className="flex flex-wrap gap-1">
                             {scan.foundSkills && scan.foundSkills.length > 0 ? (
                               scan.foundSkills.slice(0, 2).map((skill, index) => (
@@ -342,12 +337,12 @@ export default function AdminDashboard() {
                                 </span>
                               ))
                             ) : (
-                              <span className="text-[11px] text-slate-500">None</span>
+                              <span className="text-[11px] text-rose-500 font-medium">None</span>
                             )}
                           </div>
                         </td>
 
-                        <td className="py-4 pr-2">
+                        <td className="py-4 pr-2 border-b border-slate-800/50">
                           <div className="flex flex-wrap gap-1">
                             {scan.missingKeywords && scan.missingKeywords.length > 0 ? (
                               scan.missingKeywords.slice(0, 2).map((skill, index) => (
@@ -361,7 +356,7 @@ export default function AdminDashboard() {
                           </div>
                         </td>
 
-                        <td className="py-4">
+                        <td className="py-4 pr-4 border-b border-slate-800/50">
                           <div className="flex flex-wrap gap-1">
                             {scan.recommendedSkills && scan.recommendedSkills.length > 0 ? (
                               scan.recommendedSkills.slice(0, 2).map((skill, index) => (
@@ -380,7 +375,7 @@ export default function AdminDashboard() {
                   })}
                   {scans.length === 0 && (
                     <tr>
-                      <td colSpan="8" className="py-8 text-center text-slate-500">
+                      <td colSpan="8" className="py-8 text-center text-slate-500 border-b border-slate-800/50">
                         Waiting for first student scan...
                       </td>
                     </tr>
