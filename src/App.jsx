@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
 import ProtectedRoute from './ProtectedRoute';
 import AdminDashboard from './AdminDashboard';
+import PartnerDashboard from './PartnerDashboard';
 import StudentDashboard from './StudentDashboard';
 import Login from './Login';
 import { Target, ShieldAlert, Building2, Activity, Zap } from 'lucide-react';
@@ -181,16 +182,28 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
+          
+          {/* SUPER ADMIN ROUTE */}
           <Route path="/admin" element={
             <ProtectedRoute requireAdmin={true}>
               <AdminDashboard />
             </ProtectedRoute>
           } />
+          
+          {/* B2B PARTNER ROUTE */}
+          <Route path="/partner" element={
+            <ProtectedRoute requireAdmin={true}>
+              <PartnerDashboard />
+            </ProtectedRoute>
+          } />
+          
+          {/* STUDENT ROUTE */}
           <Route path="/student" element={
             <ProtectedRoute>
               <StudentDashboard />
             </ProtectedRoute>
           } />
+          
         </Routes>
       </BrowserRouter>
     </AuthProvider>
