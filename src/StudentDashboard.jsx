@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Briefcase, FileUp, AlertTriangle, CheckCircle, XCircle, Activity, 
-  Clock, FileText, LayoutTemplate, Building2, Search, ChevronDown, Download, Sparkles, Copy, X, TrendingUp, Info, Rocket
+  Clock, FileText, LayoutTemplate, Building2, Search, ChevronDown, Download, Sparkles, Copy, X, TrendingUp, Info, Rocket, Lock
 } from 'lucide-react';
 import { auth, db } from './firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'; 
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore'; 
 import Groq from "groq-sdk";
 
 import html2canvas from 'html2canvas';
@@ -34,6 +34,9 @@ export default function StudentDashboard() {
   const [selectedCompanyRole, setSelectedCompanyRole] = useState('');
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+
+  // --- COHORT KEY STATE ---
+  const [partnerCode, setPartnerCode] = useState('');
 
   const [resumeFile, setResumeFile] = useState(null);
   const [aiResult, setAiResult] = useState(null);
@@ -103,6 +106,32 @@ export default function StudentDashboard() {
     setIsRoleDropdownOpen(false);
 
     try {
+      // --- RATE LIMITING CHECK ---
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const q = query(collection(db, 'ats_scans'), where('userId', '==', auth.currentUser?.uid || 'anonymous'));
+      const querySnapshot = await getDocs(q);
+
+      const todaysScans = querySnapshot.docs.filter(doc => {
+        const data = doc.data();
+        if (!data.timestamp) return true; 
+        return data.timestamp.toDate() >= startOfToday;
+      });
+
+      const isPremium = partnerCode.trim().length > 0;
+      const maxScans = isPremium ? 10 : 2;
+
+      if (todaysScans.length >= maxScans) {
+        setErrorMsg(isPremium
+          ? "You have reached your university's daily limit of 10 scans. Please try again tomorrow."
+          : "Free daily limit reached (2/2). Enter your University Partner Code above to unlock 10 daily scans and Cover Letters."
+        );
+        setAnalyzing(false);
+        return;
+      }
+      // -----------------------------
+
       const extractedResumeText = await extractTextFromPDF(resumeFile);
       setExtractedText(extractedResumeText);
 
@@ -111,7 +140,6 @@ export default function StudentDashboard() {
         dangerouslyAllowBrowser: true 
       });
 
-      // --- UPGRADED PROMPT FOR MICRO-ACTIONS MIX ---
       const prompt = `
 You are an incredibly strict Applicant Tracking System (ATS) and an Expert Career Advisor.
 Evaluate this candidate for the exact role of: "${finalJobTarget}".
@@ -197,10 +225,14 @@ Output EXACTLY this JSON structure:
       setAiResult(parsedData);
       setShowResults(true);
 
+      // --- AUTO-ROUTER LOGIC INJECTED HERE ---
+      const finalTenantId = partnerCode.trim() ? partnerCode.trim().toLowerCase() : 'public';
+
       try {
         await addDoc(collection(db, 'ats_scans'), {
           userId: auth.currentUser?.uid || 'anonymous',
           userEmail: auth.currentUser?.email || 'unknown_email',
+          tenantId: finalTenantId, // Routed based on their code
           targetRole: finalJobTarget,
           atsFormatScore: parsedData.atsFormatScore,
           roleMatchScore: parsedData.roleMatchScore,
@@ -249,6 +281,16 @@ Output EXACTLY this JSON structure:
   // COVER LETTER TEMPLATE LOGIC
   // ==========================================
   const handleGenerateCoverLetter = async () => {
+    // --- PAYWALL LOGIC ---
+    const isPremium = partnerCode.trim().length > 0;
+    
+    if (!isPremium) {
+      setCoverLetter("🔒 PREMIUM FEATURE\n\nCover Letter generation is strictly locked on the Free Tier.\n\nPlease enter your University Partner Code at the top of your dashboard to unlock AI-generated cover letters tailored perfectly to beat the ATS.");
+      setShowLetterModal(true);
+      return;
+    }
+    // ---------------------
+
     setIsGeneratingLetter(true);
     setShowLetterModal(true);
     setCoverLetter('');
@@ -263,7 +305,6 @@ Output EXACTLY this JSON structure:
 
       const groq = new Groq({ apiKey: import.meta.env.VITE_GROQ_API_KEY, dangerouslyAllowBrowser: true });
       
-      // --- UPGRADED PROMPT FOR STRICT TEMPLATE FORMATTING ---
       const prompt = `You are a professional career assistant. Generate a complete, formal cover letter for the role of ${finalJobTarget}. 
 
 Resume Content: ${extractedText}
@@ -319,9 +360,25 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
           <p className="text-slate-400 text-lg">See your exact hiring probability based on the skills you actually possess.</p>
         </header>
 
+        {/* --- COHORT KEY INPUT --- */}
+        <div className="flex justify-center mb-8 relative z-0">
+          <div className={`w-full max-w-lg bg-[#1e293b]/80 border ${partnerCode ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-slate-700'} rounded-xl p-2 pl-4 flex items-center gap-3 transition-all focus-within:border-indigo-500/50`}>
+            {partnerCode ? <CheckCircle className="text-emerald-400" size={20} /> : <Building2 className="text-slate-400" size={20} />}
+            <input 
+              type="text" 
+              value={partnerCode}
+              onChange={(e) => setPartnerCode(e.target.value)}
+              placeholder="Enter University Partner Code (Optional)" 
+              className="w-full bg-transparent border-none focus:outline-none text-white placeholder:text-slate-500 text-sm py-2"
+            />
+            {partnerCode && <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider whitespace-nowrap mr-2">Premium Unlocked</span>}
+          </div>
+        </div>
+
         {errorMsg && (
-          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-xl mb-6 flex items-center gap-3 animate-fade-in-up">
-            <AlertTriangle size={20} /><p className="font-medium">{errorMsg}</p>
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-xl mb-6 flex items-start gap-3 animate-fade-in-up">
+            <AlertTriangle size={20} className="mt-0.5 flex-shrink-0" />
+            <p className="font-medium text-sm leading-relaxed">{errorMsg}</p>
           </div>
         )}
 
@@ -383,7 +440,9 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
         {showResults && aiResult && (
           <div className="animate-fade-in-up relative z-0">
             <div className="flex justify-end gap-3 mb-4">
-              <button onClick={handleGenerateCoverLetter} className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 rounded-lg text-sm font-medium text-indigo-300 transition-colors shadow-sm"><Sparkles size={16} /> Draft Cover Letter</button>
+              <button onClick={handleGenerateCoverLetter} className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 rounded-lg text-sm font-medium text-indigo-300 transition-colors shadow-sm">
+                 {partnerCode ? <Sparkles size={16} /> : <Lock size={16} className="text-rose-400" />} Draft Cover Letter
+              </button>
               <button onClick={handleExportPDF} disabled={exporting} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm font-medium text-white transition-colors shadow-sm">{exporting ? <Activity size={16} className="animate-spin" /> : <Download size={16} className="text-emerald-400" />}{exporting ? 'Generating PDF...' : 'Download Report'}</button>
             </div>
 
@@ -475,19 +534,22 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
             <div className="bg-[#1e293b] border border-slate-700 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
               <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2"><Sparkles className="text-indigo-400" /> AI Cover Letter Draft</h3>
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                   {partnerCode ? <Sparkles className="text-indigo-400" /> : <Lock className="text-rose-400" />} 
+                   {partnerCode ? 'AI Cover Letter Draft' : 'Premium Locked'}
+                </h3>
                 <button onClick={() => setShowLetterModal(false)} className="text-slate-400 hover:text-rose-400 transition-colors"><X size={24} /></button>
               </div>
               <div className="p-6 overflow-y-auto flex-1">
                 {isGeneratingLetter ? (
                   <div className="flex flex-col items-center justify-center py-12 space-y-4"><Activity className="text-indigo-500 animate-spin w-10 h-10" /><p className="text-slate-400 animate-pulse">Drafting your perfect response...</p></div>
                 ) : (
-                  <div className="space-y-4 text-slate-300 leading-relaxed whitespace-pre-wrap font-serif text-lg bg-[#0f172a] p-6 rounded-xl border border-slate-800 font-mono">
+                  <div className={`space-y-4 text-slate-300 leading-relaxed whitespace-pre-wrap ${partnerCode ? 'font-serif text-lg bg-[#0f172a] p-6 rounded-xl border border-slate-800 font-mono' : 'text-center py-10'}`}>
                     {coverLetter}
                   </div>
                 )}
               </div>
-              {!isGeneratingLetter && (
+              {!isGeneratingLetter && partnerCode && (
                 <div className="px-6 py-4 border-t border-slate-700 bg-slate-800/50 flex justify-end">
                   <button onClick={copyToClipboard} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}>{copied ? <CheckCircle size={18} /> : <Copy size={18} />}{copied ? 'Copied to Clipboard!' : 'Copy Letter'}</button>
                 </div>
