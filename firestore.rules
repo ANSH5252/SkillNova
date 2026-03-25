@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- HELPER FUNCTIONS ---
+    // Checks if the logged-in user's email exists in the admins collection with 'superadmin' role
+    function isSuperAdmin() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'superadmin';
+    }
+    
+    // Fetches the tenantId (Partner Code) assigned to the logged-in admin
+    function getAdminTenantId() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.tenantId;
+    }
+
+    // --- ATS SCANS COLLECTION ---
+    match /ats_scans/{scanId} {
+      // Create: Any logged-in user can create a scan, BUT they can only tag it with their own Auth UID
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      
+      // Read: This is where the magic happens. A user can ONLY read a document if:
+      // 1. They are the student who created it.
+      // 2. They are a Super Admin (Git Nova Core Team).
+      // 3. They are a University Partner AND the document's tenantId matches their assigned cohort code.
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isSuperAdmin() ||
+        (getAdminTenantId() == resource.data.tenantId)
+      );
+      
+      // Update/Delete: Locked down. Scans are immutable records.
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // --- ADMINS COLLECTION ---
+    match /admins/{adminId} {
+      // Admins can read their own profile to get their role, SuperAdmins can read all
+      allow read: if request.auth != null && (request.auth.token.email == adminId || isSuperAdmin());
+      
+      // Only Git Nova SuperAdmins can add new universities or change roles
+      allow write: if request.auth != null && isSuperAdmin();
+    }
+  }
+}
