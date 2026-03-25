@@ -35,8 +35,10 @@ export default function StudentDashboard() {
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
 
-  // --- COHORT KEY STATE ---
+  // --- DYNAMIC PARTNER CODE STATES ---
   const [partnerCode, setPartnerCode] = useState('');
+  const [isPremium, setIsPremium] = useState(false);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
 
   const [resumeFile, setResumeFile] = useState(null);
   const [aiResult, setAiResult] = useState(null);
@@ -50,6 +52,42 @@ export default function StudentDashboard() {
   const [copied, setCopied] = useState(false);
 
   const reportRef = useRef(null);
+
+  // --- THE FIX: DYNAMIC DATABASE VERIFICATION ---
+  useEffect(() => {
+    const codeToVerify = partnerCode.trim().toUpperCase();
+
+    if (!codeToVerify) {
+      setIsPremium(false);
+      setIsValidatingCode(false);
+      return;
+    }
+
+    setIsValidatingCode(true);
+    setIsPremium(false); // Reset while typing
+
+    // Debounce: Wait 600ms after the user stops typing before asking the database
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        // Ask Firestore: Does any admin have this exact tenantId?
+        const q = query(collection(db, 'admins'), where('tenantId', '==', codeToVerify));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          setIsPremium(true); // Match found! Unlock premium.
+        } else {
+          setIsPremium(false); // No match.
+        }
+      } catch (error) {
+        console.error("Error validating code:", error);
+        setIsPremium(false);
+      } finally {
+        setIsValidatingCode(false);
+      }
+    }, 600);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [partnerCode]);
 
   useEffect(() => {
     const lastScan = localStorage.getItem('lastScanTime');
@@ -106,7 +144,6 @@ export default function StudentDashboard() {
     setIsRoleDropdownOpen(false);
 
     try {
-      // --- RATE LIMITING CHECK ---
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
 
@@ -119,7 +156,6 @@ export default function StudentDashboard() {
         return data.timestamp.toDate() >= startOfToday;
       });
 
-      const isPremium = partnerCode.trim().length > 0;
       const maxScans = isPremium ? 10 : 2;
 
       if (todaysScans.length >= maxScans) {
@@ -130,7 +166,6 @@ export default function StudentDashboard() {
         setAnalyzing(false);
         return;
       }
-      // -----------------------------
 
       const extractedResumeText = await extractTextFromPDF(resumeFile);
       setExtractedText(extractedResumeText);
@@ -225,14 +260,13 @@ Output EXACTLY this JSON structure:
       setAiResult(parsedData);
       setShowResults(true);
 
-      // --- AUTO-ROUTER LOGIC INJECTED HERE ---
-      const finalTenantId = partnerCode.trim() ? partnerCode.trim().toLowerCase() : 'public';
+      const finalTenantId = isPremium ? partnerCode.trim().toUpperCase() : 'public';
 
       try {
         await addDoc(collection(db, 'ats_scans'), {
           userId: auth.currentUser?.uid || 'anonymous',
           userEmail: auth.currentUser?.email || 'unknown_email',
-          tenantId: finalTenantId, // Routed based on their code
+          tenantId: finalTenantId, 
           targetRole: finalJobTarget,
           atsFormatScore: parsedData.atsFormatScore,
           roleMatchScore: parsedData.roleMatchScore,
@@ -277,19 +311,12 @@ Output EXACTLY this JSON structure:
     }
   };
 
-  // ==========================================
-  // COVER LETTER TEMPLATE LOGIC
-  // ==========================================
   const handleGenerateCoverLetter = async () => {
-    // --- PAYWALL LOGIC ---
-    const isPremium = partnerCode.trim().length > 0;
-    
     if (!isPremium) {
-      setCoverLetter("🔒 PREMIUM FEATURE\n\nCover Letter generation is strictly locked on the Free Tier.\n\nPlease enter your University Partner Code at the top of your dashboard to unlock AI-generated cover letters tailored perfectly to beat the ATS.");
+      setCoverLetter("🔒 PREMIUM FEATURE\n\nCover Letter generation is strictly locked on the Free Tier.\n\nPlease enter a valid University Partner Code at the top of your dashboard to unlock AI-generated cover letters tailored perfectly to beat the ATS.");
       setShowLetterModal(true);
       return;
     }
-    // ---------------------
 
     setIsGeneratingLetter(true);
     setShowLetterModal(true);
@@ -360,18 +387,27 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
           <p className="text-slate-400 text-lg">See your exact hiring probability based on the skills you actually possess.</p>
         </header>
 
-        {/* --- COHORT KEY INPUT --- */}
+        {/* --- DYNAMIC COHORT KEY INPUT --- */}
         <div className="flex justify-center mb-8 relative z-0">
-          <div className={`w-full max-w-lg bg-[#1e293b]/80 border ${partnerCode ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-slate-700'} rounded-xl p-2 pl-4 flex items-center gap-3 transition-all focus-within:border-indigo-500/50`}>
-            {partnerCode ? <CheckCircle className="text-emerald-400" size={20} /> : <Building2 className="text-slate-400" size={20} />}
+          <div className={`w-full max-w-lg bg-[#1e293b]/80 border ${isPremium ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-slate-700'} rounded-xl p-2 pl-4 flex items-center gap-3 transition-all focus-within:border-indigo-500/50`}>
+            
+            {/* Dynamic Loading Icon */}
+            {isValidatingCode ? (
+              <Activity className="text-indigo-400 animate-spin" size={20} />
+            ) : isPremium ? (
+              <CheckCircle className="text-emerald-400" size={20} />
+            ) : (
+              <Building2 className="text-slate-400" size={20} />
+            )}
+
             <input 
               type="text" 
               value={partnerCode}
-              onChange={(e) => setPartnerCode(e.target.value)}
-              placeholder="Enter University Partner Code (Optional)" 
-              className="w-full bg-transparent border-none focus:outline-none text-white placeholder:text-slate-500 text-sm py-2"
+              onChange={(e) => setPartnerCode(e.target.value.toUpperCase())}
+              placeholder="Enter University Partner Code" 
+              className="w-full bg-transparent border-none focus:outline-none text-white placeholder:text-slate-500 text-sm py-2 uppercase"
             />
-            {partnerCode && <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider whitespace-nowrap mr-2">Premium Unlocked</span>}
+            {isPremium && !isValidatingCode && <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider whitespace-nowrap mr-2">Premium Unlocked</span>}
           </div>
         </div>
 
@@ -441,7 +477,7 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
           <div className="animate-fade-in-up relative z-0">
             <div className="flex justify-end gap-3 mb-4">
               <button onClick={handleGenerateCoverLetter} className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 rounded-lg text-sm font-medium text-indigo-300 transition-colors shadow-sm">
-                 {partnerCode ? <Sparkles size={16} /> : <Lock size={16} className="text-rose-400" />} Draft Cover Letter
+                 {isPremium ? <Sparkles size={16} /> : <Lock size={16} className="text-rose-400" />} Draft Cover Letter
               </button>
               <button onClick={handleExportPDF} disabled={exporting} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm font-medium text-white transition-colors shadow-sm">{exporting ? <Activity size={16} className="animate-spin" /> : <Download size={16} className="text-emerald-400" />}{exporting ? 'Generating PDF...' : 'Download Report'}</button>
             </div>
@@ -471,7 +507,6 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
               <div className="bg-[#1e293b]/40 border border-slate-800 rounded-2xl p-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   
-                  {/* Found, Missing, & Recommended Skills Section */}
                   <div className="space-y-8">
                     <div>
                       <h4 className="text-lg font-semibold text-emerald-400 mb-4 flex items-center gap-2"><CheckCircle size={18} /> Validated Core Skills</h4>
@@ -510,7 +545,6 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
 
                   </div>
 
-                  {/* Actionable Steps & Formatting Mix */}
                   <div>
                     <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><TrendingUp className="text-indigo-400" size={18} /> Actionable Feedback & Roadmap</h4>
                     <ul className="space-y-4">
@@ -535,8 +569,8 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
             <div className="bg-[#1e293b] border border-slate-700 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
               <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                   {partnerCode ? <Sparkles className="text-indigo-400" /> : <Lock className="text-rose-400" />} 
-                   {partnerCode ? 'AI Cover Letter Draft' : 'Premium Locked'}
+                   {isPremium ? <Sparkles className="text-indigo-400" /> : <Lock className="text-rose-400" />} 
+                   {isPremium ? 'AI Cover Letter Draft' : 'Premium Locked'}
                 </h3>
                 <button onClick={() => setShowLetterModal(false)} className="text-slate-400 hover:text-rose-400 transition-colors"><X size={24} /></button>
               </div>
@@ -544,12 +578,12 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
                 {isGeneratingLetter ? (
                   <div className="flex flex-col items-center justify-center py-12 space-y-4"><Activity className="text-indigo-500 animate-spin w-10 h-10" /><p className="text-slate-400 animate-pulse">Drafting your perfect response...</p></div>
                 ) : (
-                  <div className={`space-y-4 text-slate-300 leading-relaxed whitespace-pre-wrap ${partnerCode ? 'font-serif text-lg bg-[#0f172a] p-6 rounded-xl border border-slate-800 font-mono' : 'text-center py-10'}`}>
+                  <div className={`space-y-4 text-slate-300 leading-relaxed whitespace-pre-wrap ${isPremium ? 'font-serif text-lg bg-[#0f172a] p-6 rounded-xl border border-slate-800 font-mono' : 'text-center py-10'}`}>
                     {coverLetter}
                   </div>
                 )}
               </div>
-              {!isGeneratingLetter && partnerCode && (
+              {!isGeneratingLetter && isPremium && (
                 <div className="px-6 py-4 border-t border-slate-700 bg-slate-800/50 flex justify-end">
                   <button onClick={copyToClipboard} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}>{copied ? <CheckCircle size={18} /> : <Copy size={18} />}{copied ? 'Copied to Clipboard!' : 'Copy Letter'}</button>
                 </div>
