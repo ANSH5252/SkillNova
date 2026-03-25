@@ -12,17 +12,18 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [userRole, setUserRole] = useState('student'); // Can be 'superadmin', 'partner', or 'student'
+  const [userRole, setUserRole] = useState('student'); 
   const [tenantId, setTenantId] = useState(null);
+  
   const [loading, setLoading] = useState(true);
+  const [isFetchingRole, setIsFetchingRole] = useState(true); // --- NEW STATE ---
 
   useEffect(() => {
-    // This listener automatically fires whenever a user logs in or logs out
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      setIsFetchingRole(true); // Tell the app we are checking roles
       
       if (user) {
-        // Check if the logged-in email exists in the 'admins' collection in Firestore
         try {
           const adminDocRef = doc(db, 'admins', user.email);
           const adminDocSnap = await getDoc(adminDocRef);
@@ -30,10 +31,9 @@ export function AuthProvider({ children }) {
           if (adminDocSnap.exists()) {
             const data = adminDocSnap.data();
             setIsAdmin(true);
-            setUserRole(data.role || 'partner'); // Default to partner if role is missing
-            setTenantId(data.tenantId || null);  // Link them to their university/cohort
+            setUserRole(data.role || 'partner'); 
+            setTenantId(data.tenantId || null);  
           } else {
-            // Not in the admins collection -> Standard Student
             setIsAdmin(false);
             setUserRole('student');
             setTenantId(null);
@@ -45,13 +45,13 @@ export function AuthProvider({ children }) {
           setTenantId(null);
         }
       } else {
-        // Logged out state
         setIsAdmin(false);
         setUserRole('student');
         setTenantId(null);
       }
       
-      setLoading(false);
+      setIsFetchingRole(false); // Done checking roles
+      setLoading(false); // Done initial auth check
     });
 
     return unsubscribe;
@@ -61,7 +61,8 @@ export function AuthProvider({ children }) {
     currentUser,
     isAdmin,
     userRole,
-    tenantId
+    tenantId,
+    isFetchingRole // --- EXPORT THE STATE ---
   };
 
   return (

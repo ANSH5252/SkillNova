@@ -4,7 +4,7 @@ import {
   XCircle, FileText, Activity, BookOpen, AlertCircle
 } from 'lucide-react';
 import { auth, db } from './firebase';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore'; // Removed orderBy to fix the Index crash
 import { useAuth } from './AuthContext';
 
 export default function PartnerDashboard() {
@@ -12,6 +12,7 @@ export default function PartnerDashboard() {
   const [scans, setScans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null); // Added error state
 
   const [stats, setStats] = useState({
     totalScans: 0,
@@ -22,30 +23,38 @@ export default function PartnerDashboard() {
   });
 
   useEffect(() => {
-    // SECURITY ALGORITHM: Only fetch scans matching this specific Partner's Tenant ID
-    if (!tenantId) return;
+    // FIX 1: If tenantId is missing, show an error, don't spin forever
+    if (!tenantId) {
+      setErrorMsg("Admin configuration error: No Partner Code assigned to this account.");
+      setLoading(false);
+      return;
+    }
 
+    // FIX 2: Removed orderBy() to bypass the Firestore Composite Index crash
     const q = query(
       collection(db, 'ats_scans'), 
-      where('tenantId', '==', tenantId),
-      orderBy('timestamp', 'desc')
+      where('tenantId', '==', tenantId)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      // Sort locally via JavaScript instead of requiring a database index
       const scanData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })).sort((a, b) => {
+        const timeA = a.timestamp?.toMillis() || 0;
+        const timeB = b.timestamp?.toMillis() || 0;
+        return timeB - timeA;
+      });
 
       setScans(scanData);
 
       if (scanData.length > 0) {
         const total = scanData.length;
         const uniqueEmails = new Set(scanData.map(s => s.userEmail));
-        const totalScore = scanData.reduce((acc, curr) => acc + (curr.roleMatchScore || 0), 0);
-        const passedCount = scanData.filter(s => (s.roleMatchScore || 0) >= 60).length;
+        const totalScore = scanData.reduce((acc, curr) => acc + (curr.roleMatchScore || curr.score || 0), 0);
+        const passedCount = scanData.filter(s => (s.roleMatchScore || s.score || 0) >= 60).length;
         
-        // Calculate Curriculum Gaps
         const gapCounts = {};
         scanData.forEach(scan => {
           if (scan.missingKeywords) {
@@ -69,6 +78,11 @@ export default function PartnerDashboard() {
         });
       }
       setLoading(false);
+    }, (error) => {
+      // FIX 3: Catch Firestore errors so it doesn't spin forever silently
+      console.error("Firestore Error:", error);
+      setErrorMsg("Database connection blocked: " + error.message);
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -76,7 +90,6 @@ export default function PartnerDashboard() {
 
   const handleExportCurriculumReport = () => {
     setIsExporting(true);
-    // Simulate PDF Generation for the pitch
     setTimeout(() => {
       setIsExporting(false);
       alert(`Curriculum Alignment Report generated for Cohort: ${tenantId.toUpperCase()}`);
@@ -93,6 +106,17 @@ export default function PartnerDashboard() {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
         <Activity className="text-indigo-500 animate-spin w-12 h-12" />
+      </div>
+    );
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-4">
+        <AlertCircle className="text-rose-500 w-16 h-16 mb-4" />
+        <h2 className="text-2xl font-bold text-white mb-2">Dashboard Error</h2>
+        <p className="text-slate-400 text-center max-w-md mb-6">{errorMsg}</p>
+        <button onClick={() => auth.signOut()} className="px-6 py-2 bg-indigo-600 text-white rounded-lg">Sign Out</button>
       </div>
     );
   }
