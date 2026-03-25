@@ -12,6 +12,8 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState('student'); // Can be 'superadmin', 'partner', or 'student'
+  const [tenantId, setTenantId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,13 +26,29 @@ export function AuthProvider({ children }) {
         try {
           const adminDocRef = doc(db, 'admins', user.email);
           const adminDocSnap = await getDoc(adminDocRef);
-          setIsAdmin(adminDocSnap.exists());
+          
+          if (adminDocSnap.exists()) {
+            const data = adminDocSnap.data();
+            setIsAdmin(true);
+            setUserRole(data.role || 'partner'); // Default to partner if role is missing
+            setTenantId(data.tenantId || null);  // Link them to their university/cohort
+          } else {
+            // Not in the admins collection -> Standard Student
+            setIsAdmin(false);
+            setUserRole('student');
+            setTenantId(null);
+          }
         } catch (error) {
           console.error("Error checking admin status:", error);
           setIsAdmin(false);
+          setUserRole('student');
+          setTenantId(null);
         }
       } else {
+        // Logged out state
         setIsAdmin(false);
+        setUserRole('student');
+        setTenantId(null);
       }
       
       setLoading(false);
@@ -41,7 +59,9 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
-    isAdmin
+    isAdmin,
+    userRole,
+    tenantId
   };
 
   return (
