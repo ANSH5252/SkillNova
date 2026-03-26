@@ -5,6 +5,7 @@ import ProtectedRoute from './ProtectedRoute';
 import AdminDashboard from './AdminDashboard';
 import PartnerDashboard from './PartnerDashboard';
 import StudentDashboard from './StudentDashboard';
+import PartnerApply from './PartnerApply';
 import Login from './Login';
 import { Target, ShieldAlert, Building2, Activity, Zap } from 'lucide-react';
 
@@ -95,6 +96,9 @@ function LandingPage() {
             <Link to="/login" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-500/25">
               Enter Simulator
             </Link>
+            <Link to="/apply" className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-lg transition-all border border-slate-700">
+              Partner With Us
+            </Link>
           </div>
         </div>
       </nav>
@@ -182,7 +186,7 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
-          
+          <Route path="/apply" element={<PartnerApply />} />
           {/* SUPER ADMIN ROUTE */}
           <Route path="/admin" element={
             <ProtectedRoute requireAdmin={true}>
