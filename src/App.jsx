@@ -92,8 +92,10 @@ function LandingPage() {
             <SkillNovaLogo className="w-10 h-10 animate-pulse" />
             <span className="text-2xl font-bold tracking-tight text-white">SkillNova</span>
           </div>
+          
+          {/* FIXED NAVBAR BUTTONS */}
           <div className="flex items-center gap-4">
-            <Link to="/login" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-500/25">
+            <Link to="/login" state={{ intendedPath: '/student' }} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-500/25">
               Enter Simulator
             </Link>
             <Link to="/apply" className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-lg transition-all border border-slate-700">
@@ -124,12 +126,13 @@ function LandingPage() {
             Stop guessing why your resume was rejected. SkillNova's local PDF parser and ruthless AI scoring engine shows you exactly what enterprise hiring software sees.
           </p>
           
+          {/* FIXED AND RESIZED HERO BUTTONS */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up delay-hero-4">
-            <Link to="/login" className="w-full sm:w-auto px-8 py-4 bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-xl shadow-white/10">
-              <Zap size={20} /> Run Your Free Scan
+            <Link to="/login" state={{ intendedPath: '/student' }} className="w-full sm:w-auto px-6 py-3.5 bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xl shadow-white/10">
+              <Zap size={18} /> Run Your Free Scan
             </Link>
-            <Link to="/login" state={{ intendedPath: '/admin' }} className="w-full sm:w-auto px-8 py-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2">
-              <Building2 size={20} /> Partner Dashboard
+            <Link to="/login" state={{ intendedPath: '/partner' }} className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2">
+              <Building2 size={18} /> Partner Dashboard
             </Link>
           </div>
         </div>
