@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, Users, Target, TrendingUp, Download, CheckCircle, 
-  XCircle, FileText, Activity, BookOpen, AlertCircle
+  XCircle, FileText, Activity, BookOpen, AlertCircle, UploadCloud, X
 } from 'lucide-react';
 import { auth, db } from './firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore'; // Removed orderBy to fix the Index crash
+import { collection, query, where, onSnapshot, writeBatch, doc } from 'firebase/firestore'; 
 import { useAuth } from './AuthContext';
 
 export default function PartnerDashboard() {
@@ -12,7 +12,13 @@ export default function PartnerDashboard() {
   const [scans, setScans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(null); // Added error state
+  const [errorMsg, setErrorMsg] = useState(null); 
+
+  // --- BULK UPLOAD MODAL STATES ---
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState({ text: '', type: '' });
 
   const [stats, setStats] = useState({
     totalScans: 0,
@@ -23,21 +29,18 @@ export default function PartnerDashboard() {
   });
 
   useEffect(() => {
-    // FIX 1: If tenantId is missing, show an error, don't spin forever
     if (!tenantId) {
       setErrorMsg("Admin configuration error: No Partner Code assigned to this account.");
       setLoading(false);
       return;
     }
 
-    // FIX 2: Removed orderBy() to bypass the Firestore Composite Index crash
     const q = query(
       collection(db, 'ats_scans'), 
       where('tenantId', '==', tenantId)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Sort locally via JavaScript instead of requiring a database index
       const scanData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -79,7 +82,6 @@ export default function PartnerDashboard() {
       }
       setLoading(false);
     }, (error) => {
-      // FIX 3: Catch Firestore errors so it doesn't spin forever silently
       console.error("Firestore Error:", error);
       setErrorMsg("Database connection blocked: " + error.message);
       setLoading(false);
@@ -87,6 +89,57 @@ export default function PartnerDashboard() {
 
     return () => unsubscribe();
   }, [tenantId]);
+
+  // --- CSV UPLOAD LOGIC ---
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === "text/csv") {
+      setCsvFile(file);
+      setUploadMessage({ text: '', type: '' });
+    } else {
+      setCsvFile(null);
+      setUploadMessage({ text: 'Please upload a valid .csv file.', type: 'error' });
+    }
+  };
+
+  const processBulkUpload = async () => {
+    if (!csvFile) return;
+    setIsUploading(true);
+    setUploadMessage({ text: 'Parsing CSV...', type: 'info' });
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const text = e.target.result;
+      const rawLines = text.split('\n');
+      const emailsToUpload = rawLines.map(line => line.split(',')[0].trim().toLowerCase()).filter(email => email.includes('@'));
+
+      if (emailsToUpload.length === 0) {
+        setUploadMessage({ text: 'No valid emails found in the CSV.', type: 'error' });
+        setIsUploading(false); return;
+      }
+
+      try {
+        setUploadMessage({ text: `Provisioning ${emailsToUpload.length} students...`, type: 'info' });
+        const batch = writeBatch(db);
+
+        emailsToUpload.slice(0, 500).forEach((email) => {
+          const studentRef = doc(db, 'allowed_students', email);
+          // Hardcoded securely to THIS partner's tenantId!
+          batch.set(studentRef, { tenantId: tenantId }); 
+        });
+
+        await batch.commit();
+        setUploadMessage({ text: `Success! ${emailsToUpload.slice(0, 500).length} students onboarded.`, type: 'success' });
+        setCsvFile(null);
+        setTimeout(() => setShowUploadModal(false), 2000);
+      } catch (error) {
+        setUploadMessage({ text: 'Database error. Check console.', type: 'error' });
+      } finally {
+        setIsUploading(false);
+      }
+    };
+    reader.readAsText(csvFile);
+  };
 
   const handleExportCurriculumReport = () => {
     setIsExporting(true);
@@ -126,7 +179,7 @@ export default function PartnerDashboard() {
       <div className="max-w-7xl mx-auto">
         
         {/* TOP NAVIGATION & BRANDING */}
-        <div className="flex justify-between items-end mb-10 border-b border-slate-800 pb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 border-b border-slate-800 pb-6 gap-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3">
               <Building2 size={14} /> Enterprise Partner Portal
@@ -136,16 +189,24 @@ export default function PartnerDashboard() {
             </h1>
             <p className="text-slate-400 mt-2 text-sm">Real-time curriculum alignment and placement probability for your students.</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* NEW: ADD STUDENTS BUTTON */}
+            <button 
+              onClick={() => setShowUploadModal(true)}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+            >
+              <UploadCloud size={18} />
+              Add Students
+            </button>
             <button 
               onClick={handleExportCurriculumReport}
               disabled={isExporting}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold transition-all shadow-lg shadow-indigo-500/25 flex items-center gap-2"
+              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-lg text-sm font-bold transition-all flex items-center gap-2"
             >
               {isExporting ? <Activity size={18} className="animate-spin" /> : <Download size={18} />}
-              {isExporting ? 'Compiling Data...' : 'Export Curriculum Report'}
+              {isExporting ? 'Compiling Data...' : 'Export Report'}
             </button>
-            <button onClick={() => auth.signOut()} className="px-4 py-2 bg-slate-800 hover:bg-rose-500/10 hover:text-rose-400 border border-slate-700 hover:border-rose-500/30 rounded-lg text-sm font-medium transition-all">
+            <button onClick={() => auth.signOut()} className="px-4 py-2.5 bg-slate-800 hover:bg-rose-500/10 hover:text-rose-400 border border-slate-700 hover:border-rose-500/30 rounded-lg text-sm font-medium transition-all">
               Sign Out
             </button>
           </div>
@@ -290,6 +351,45 @@ export default function PartnerDashboard() {
 
         </div>
       </div>
+
+      {/* --- CSV UPLOAD MODAL --- */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-[#1e293b] border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><UploadCloud className="text-indigo-400" /> Roster Upload</h3>
+              <button onClick={() => setShowUploadModal(false)} className="text-slate-400 hover:text-rose-400 transition-colors"><X size={20} /></button>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-sm text-slate-400 mb-6">Upload a CSV containing student emails. They will instantly receive premium access tied to <strong className="text-indigo-300 uppercase">{tenantId}</strong>.</p>
+              
+              <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all ${csvFile ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-700 bg-slate-800/50 hover:border-indigo-500/30'}`}>
+                <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                {csvFile ? (
+                  <div className="text-center"><CheckCircle className="text-emerald-500 w-10 h-10 mx-auto mb-3"/><p className="text-emerald-400 text-sm font-medium">{csvFile.name}</p></div>
+                ) : (
+                  <div className="text-center"><UploadCloud className="text-slate-500 w-10 h-10 mx-auto mb-3"/><p className="text-slate-300 text-sm font-medium mb-1">Click to browse files</p><p className="text-xs text-slate-500">Must be a .CSV file</p></div>
+                )}
+              </label>
+
+              {uploadMessage.text && (
+                <div className={`mt-4 text-[12px] font-medium p-3 rounded-lg ${uploadMessage.type === 'error' ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20' : uploadMessage.type === 'success' ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-blue-400 bg-blue-500/10'}`}>
+                  {uploadMessage.text}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-700 bg-slate-800/50 flex justify-end gap-3">
+              <button onClick={() => setShowUploadModal(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">Cancel</button>
+              <button onClick={processBulkUpload} disabled={isUploading || !csvFile} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20">
+                {isUploading ? <Activity size={16} className="animate-spin" /> : 'Provision Accounts'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
