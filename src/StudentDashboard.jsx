@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Briefcase, FileUp, AlertTriangle, CheckCircle, XCircle, Activity, 
-  Clock, FileText, LayoutTemplate, Building2, Search, ChevronDown, Download, Sparkles, Copy, X, TrendingUp, Info, Rocket, Lock
+  Briefcase, FileUp, AlertTriangle, CheckCircle, Activity, 
+  Clock, FileText, LayoutTemplate, Building2, Search, ChevronDown, Download, Sparkles, Copy, X, TrendingUp, Info, Rocket, Lock, ShieldCheck
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore'; 
 import Groq from "groq-sdk";
+import { useAuth } from './AuthContext'; // <-- Import to grab the tenantId
 
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -23,6 +24,10 @@ const partnerCompanies = [
 ];
 
 export default function StudentDashboard() {
+  // --- NEW: GRAB TENANT ID FROM CONTEXT ---
+  const { tenantId } = useAuth(); 
+  const isPremium = tenantId && tenantId !== 'public';
+
   const [analyzing, setAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -34,11 +39,6 @@ export default function StudentDashboard() {
   const [selectedCompanyRole, setSelectedCompanyRole] = useState('');
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-
-  // --- DYNAMIC PARTNER CODE STATES ---
-  const [partnerCode, setPartnerCode] = useState('');
-  const [isPremium, setIsPremium] = useState(false);
-  const [isValidatingCode, setIsValidatingCode] = useState(false);
 
   const [resumeFile, setResumeFile] = useState(null);
   const [aiResult, setAiResult] = useState(null);
@@ -52,42 +52,6 @@ export default function StudentDashboard() {
   const [copied, setCopied] = useState(false);
 
   const reportRef = useRef(null);
-
-  // --- THE FIX: DYNAMIC DATABASE VERIFICATION ---
-  useEffect(() => {
-    const codeToVerify = partnerCode.trim().toUpperCase();
-
-    if (!codeToVerify) {
-      setIsPremium(false);
-      setIsValidatingCode(false);
-      return;
-    }
-
-    setIsValidatingCode(true);
-    setIsPremium(false); // Reset while typing
-
-    // Debounce: Wait 600ms after the user stops typing before asking the database
-    const delayDebounceFn = setTimeout(async () => {
-      try {
-        // Ask Firestore: Does any admin have this exact tenantId?
-        const q = query(collection(db, 'admins'), where('tenantId', '==', codeToVerify));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-          setIsPremium(true); // Match found! Unlock premium.
-        } else {
-          setIsPremium(false); // No match.
-        }
-      } catch (error) {
-        console.error("Error validating code:", error);
-        setIsPremium(false);
-      } finally {
-        setIsValidatingCode(false);
-      }
-    }, 600);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [partnerCode]);
 
   useEffect(() => {
     const lastScan = localStorage.getItem('lastScanTime');
@@ -128,9 +92,7 @@ export default function StudentDashboard() {
   };
 
   const handleAnalyze = async () => {
-    const finalJobTarget = inputMode === 'role' 
-      ? customJobRole 
-      : `${selectedCompanyRole} at ${selectedCompany}`;
+    const finalJobTarget = inputMode === 'role' ? customJobRole : `${selectedCompanyRole} at ${selectedCompany}`;
 
     if (inputMode === 'role' && !customJobRole) { setErrorMsg("Please enter your Target Job Role."); return; }
     if (inputMode === 'company' && (!selectedCompany || !selectedCompanyRole)) { setErrorMsg("Please select a Partner Company and an open role."); return; }
@@ -161,7 +123,7 @@ export default function StudentDashboard() {
       if (todaysScans.length >= maxScans) {
         setErrorMsg(isPremium
           ? "You have reached your university's daily limit of 10 scans. Please try again tomorrow."
-          : "Free daily limit reached (2/2). Enter your University Partner Code above to unlock 10 daily scans and Cover Letters."
+          : "Free daily limit reached (2/2). Ask your university to register your email to unlock 10 daily scans and Cover Letters."
         );
         setAnalyzing(false);
         return;
@@ -170,53 +132,27 @@ export default function StudentDashboard() {
       const extractedResumeText = await extractTextFromPDF(resumeFile);
       setExtractedText(extractedResumeText);
 
-      const groq = new Groq({ 
-        apiKey: import.meta.env.VITE_GROQ_API_KEY, 
-        dangerouslyAllowBrowser: true 
-      });
+      const groq = new Groq({ apiKey: import.meta.env.VITE_GROQ_API_KEY, dangerouslyAllowBrowser: true });
 
       const prompt = `
-You are an incredibly strict Applicant Tracking System (ATS) and an Expert Career Advisor.
-Evaluate this candidate for the exact role of: "${finalJobTarget}".
-
+You are an incredibly strict Applicant Tracking System (ATS). Evaluate this candidate for the exact role of: "${finalJobTarget}".
 RESUME TEXT:
 ${extractedResumeText}
-
 INSTRUCTIONS:
 1. Define the TOP 10 absolute mandatory technical skills required for "${finalJobTarget}". 
 2. Evaluate the resume STRICTLY against these 10 skills. Yes (true) or No (false).
-3. RUTHLESS RULE: DO NOT give credit for impressive skills irrelevant to the target role.
-4. FUTURE PROOFING: Suggest 4-5 "recommendedSkills". These should be trending, highly sought-after, or advanced technologies for this specific role.
-5. ACTIONABLE FEEDBACK ("microActions"): Provide 3-4 immediate, highly specific next steps. This MUST include a mix of:
-   - 1-2 steps on exactly how to improve their resume's formatting, layout, or phrasing based on your scan.
-   - 1-2 strategic steps on how to learn the missing/recommended skills (e.g., specific project ideas).
-6. Evaluate formatting (0-100). Deduct for messiness. DO NOT output 80.
-
+3. Suggest 4-5 "recommendedSkills" for future proofing.
+4. Provide 3-4 immediate "microActions" to fix formatting or learn skills.
+5. Evaluate formatting (0-100).
 Output EXACTLY this JSON structure:
-{
-  "atsFormatScore": <Integer 0-100>,
-  "formatMessage": "<1-sentence critique>",
-  "skillEvaluation": [
-    {"skillName": "<Required Skill 1>", "foundInResume": true},
-    {"skillName": "<Required Skill 2>", "foundInResume": false}
-  ],
-  "recommendedSkills": ["<Trending Tech 1>", "<Trending Tech 2>", "<Trending Tech 3>", "<Trending Tech 4>"],
-  "microActions": ["<Action 1>", "<Action 2>", "<Action 3>"]
-}
+{"atsFormatScore": <Int 0-100>, "formatMessage": "<1-sentence>", "skillEvaluation": [{"skillName": "<Skill>", "foundInResume": <Bool>}], "recommendedSkills": ["<Skill>"], "microActions": ["<Action>"]}
 `;
 
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        model: "llama-3.1-8b-instant",
-        temperature: 0.1, 
-        response_format: { type: "json_object" } 
-      });
-
+      const chatCompletion = await groq.chat.completions.create({ messages: [{ role: "user", content: prompt }], model: "llama-3.1-8b-instant", temperature: 0.1, response_format: { type: "json_object" } });
       const responseText = chatCompletion.choices[0]?.message?.content || "";
       let parsedData = JSON.parse(responseText);
       
-      const rawFormatScore = String(parsedData.atsFormatScore).replace(/\D/g, '');
-      const safeFormatScore = parseInt(rawFormatScore, 10) || 50;
+      const safeFormatScore = parseInt(String(parsedData.atsFormatScore).replace(/\D/g, ''), 10) || 50;
       parsedData.atsFormatScore = safeFormatScore;
 
       const evaluation = Array.isArray(parsedData.skillEvaluation) ? parsedData.skillEvaluation : [];
@@ -224,49 +160,34 @@ Output EXACTLY this JSON structure:
       let extractedMissing = evaluation.filter(item => item.foundInResume === false).map(item => item.skillName);
       
       parsedData.recommendedSkills = Array.isArray(parsedData.recommendedSkills) ? parsedData.recommendedSkills.slice(0, 5) : [];
-
       parsedData.foundSkills = extractedFound;
       parsedData.missingKeywords = extractedMissing.slice(0, 6);
 
       const foundCount = extractedFound.length;
-
       let baseMatchScore = (foundCount / 10) * 100;
-      if (foundCount <= 4) {
-        baseMatchScore = Math.max(12, baseMatchScore - 25);
-      }
-      
+      if (foundCount <= 4) baseMatchScore = Math.max(12, baseMatchScore - 25);
       baseMatchScore += Math.floor(Math.random() * 5) - 2; 
       parsedData.roleMatchScore = Math.max(12, Math.min(100, Math.round(baseMatchScore)));
 
       let formatBoost = (safeFormatScore / 100) * 8; 
       let calculatedProbability = (parsedData.roleMatchScore * 0.90) + formatBoost;
-
-      if (parsedData.roleMatchScore < 40) {
-        calculatedProbability = parsedData.roleMatchScore - 5;
-      }
+      if (parsedData.roleMatchScore < 40) calculatedProbability = parsedData.roleMatchScore - 5;
       
       parsedData.marketProbability = Math.max(5, Math.min(99, Math.round(calculatedProbability)));
 
-      if (parsedData.roleMatchScore >= 80) {
-        parsedData.verdict = "Highly Likely (Strong Match)";
-      } else if (parsedData.roleMatchScore >= 60) {
-        parsedData.verdict = "Likely (Average Candidate)";
-      } else if (parsedData.roleMatchScore >= 35) {
-        parsedData.verdict = "Possible (Needs Upskilling)";
-      } else {
-        parsedData.verdict = "Auto-Rejected (Lacks Core Skills)";
-      }
+      if (parsedData.roleMatchScore >= 80) parsedData.verdict = "Highly Likely (Strong Match)";
+      else if (parsedData.roleMatchScore >= 60) parsedData.verdict = "Likely (Average Candidate)";
+      else if (parsedData.roleMatchScore >= 35) parsedData.verdict = "Possible (Needs Upskilling)";
+      else parsedData.verdict = "Auto-Rejected (Lacks Core Skills)";
 
       setAiResult(parsedData);
       setShowResults(true);
-
-      const finalTenantId = isPremium ? partnerCode.trim().toUpperCase() : 'public';
 
       try {
         await addDoc(collection(db, 'ats_scans'), {
           userId: auth.currentUser?.uid || 'anonymous',
           userEmail: auth.currentUser?.email || 'unknown_email',
-          tenantId: finalTenantId, 
+          tenantId: tenantId, // Auto-attaches their pre-registered tenantId from AuthContext!
           targetRole: finalJobTarget,
           atsFormatScore: parsedData.atsFormatScore,
           roleMatchScore: parsedData.roleMatchScore,
@@ -278,9 +199,7 @@ Output EXACTLY this JSON structure:
           recommendedSkills: parsedData.recommendedSkills,
           timestamp: serverTimestamp(),
         });
-      } catch (dbError) {
-        console.error("Firebase Error:", dbError);
-      }
+      } catch (dbError) { console.error("Firebase Error:", dbError); }
 
       setCooldown(60);
       localStorage.setItem('lastScanTime', Date.now().toString());
@@ -297,23 +216,18 @@ Output EXACTLY this JSON structure:
     if (!reportRef.current) return;
     setExporting(true);
     try {
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2, backgroundColor: '#0f172a', windowWidth: reportRef.current.scrollWidth, windowHeight: reportRef.current.scrollHeight
-      });
+      const canvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: '#0f172a' });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'landscape' : 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
       pdf.save('SkillNova_ATS_Report.pdf');
-    } catch (err) {
-      console.error("PDF Gen Error: ", err);
-    } finally {
-      setExporting(false);
-    }
+    } catch (err) { console.error("PDF Gen Error: ", err); } 
+    finally { setExporting(false); }
   };
 
   const handleGenerateCoverLetter = async () => {
     if (!isPremium) {
-      setCoverLetter("🔒 PREMIUM FEATURE\n\nCover Letter generation is strictly locked on the Free Tier.\n\nPlease enter a valid University Partner Code at the top of your dashboard to unlock AI-generated cover letters tailored perfectly to beat the ATS.");
+      setCoverLetter("🔒 PREMIUM FEATURE\n\nCover Letter generation is strictly locked on the Free Tier.\n\nYour university must pre-register your email address to unlock AI-generated cover letters tailored perfectly to beat the ATS.");
       setShowLetterModal(true);
       return;
     }
@@ -329,46 +243,13 @@ Output EXACTLY this JSON structure:
         setCoverLetter("⚠️ Please analyze your resume first.");
         setIsGeneratingLetter(false); return;
       }
-
       const groq = new Groq({ apiKey: import.meta.env.VITE_GROQ_API_KEY, dangerouslyAllowBrowser: true });
-      
-      const prompt = `You are a professional career assistant. Generate a complete, formal cover letter for the role of ${finalJobTarget}. 
-
-Resume Content: ${extractedText}
-
-RULES:
-- Maintain a professional, confident tone.
-- Compensate smartly for any missing core skills by highlighting adaptability or related experience.
-- The body should be 150-250 words.
-- You MUST format the output exactly like a traditional letter, using [Square Brackets] for placeholder data the user needs to fill in manually. Do NOT use markdown formatting (like **bolding**).
-
-FORMAT TO FOLLOW EXACTLY:
-[Your Name]
-[Your Phone Number] | [Your Email] | [Your LinkedIn/Portfolio]
-
-[Date]
-
-Hiring Manager
-[Company Name]
-[Company Address/City]
-
-Dear [Hiring Manager Name or "Hiring Team"],
-
-(Write the body of the cover letter here)
-
-Sincerely,
-
-[Your Name]
-
-RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
-
+      const prompt = `Generate a professional cover letter for the role of ${finalJobTarget} based on this resume: ${extractedText}. Format strictly with [Square Brackets] for missing personal data. Keep it 150-250 words. No intro/outro remarks.`;
       const chatCompletion = await groq.chat.completions.create({ messages: [{ role: "user", content: prompt }], model: "llama-3.1-8b-instant", temperature: 0.7 });
       setCoverLetter(chatCompletion.choices[0]?.message?.content || "Failed to generate.");
     } catch (error) {
       setCoverLetter("❌ Error generating cover letter.");
-    } finally {
-      setIsGeneratingLetter(false);
-    }
+    } finally { setIsGeneratingLetter(false); }
   };
 
   const copyToClipboard = () => { navigator.clipboard.writeText(coverLetter); setCopied(true); setTimeout(() => setCopied(false), 2000); };
@@ -387,27 +268,19 @@ RETURN ONLY THE PLAIN TEXT LETTER. No introductory or concluding remarks.`;
           <p className="text-slate-400 text-lg">See your exact hiring probability based on the skills you actually possess.</p>
         </header>
 
-        {/* --- DYNAMIC COHORT KEY INPUT --- */}
+        {/* --- DYNAMIC PREMIUM STATUS BADGE (NO INPUT BOX) --- */}
         <div className="flex justify-center mb-8 relative z-0">
-          <div className={`w-full max-w-lg bg-[#1e293b]/80 border ${isPremium ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-slate-700'} rounded-xl p-2 pl-4 flex items-center gap-3 transition-all focus-within:border-indigo-500/50`}>
-            
-            {/* Dynamic Loading Icon */}
-            {isValidatingCode ? (
-              <Activity className="text-indigo-400 animate-spin" size={20} />
-            ) : isPremium ? (
-              <CheckCircle className="text-emerald-400" size={20} />
-            ) : (
-              <Building2 className="text-slate-400" size={20} />
-            )}
-
-            <input 
-              type="text" 
-              value={partnerCode}
-              onChange={(e) => setPartnerCode(e.target.value.toUpperCase())}
-              placeholder="Enter University Partner Code" 
-              className="w-full bg-transparent border-none focus:outline-none text-white placeholder:text-slate-500 text-sm py-2 uppercase"
-            />
-            {isPremium && !isValidatingCode && <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider whitespace-nowrap mr-2">Premium Unlocked</span>}
+          <div className={`w-full max-w-lg bg-[#1e293b]/80 border ${isPremium ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-slate-700'} rounded-xl px-6 py-4 flex items-center justify-between transition-all`}>
+            <div className="flex items-center gap-3">
+              {isPremium ? <ShieldCheck className="text-emerald-400" size={24} /> : <Building2 className="text-slate-500" size={24} />}
+              <div>
+                <p className="text-white font-bold">{isPremium ? 'Enterprise Access Verified' : 'Standard Free Tier'}</p>
+                <p className="text-slate-400 text-xs">
+                  {isPremium ? `Cohort: ${tenantId.toUpperCase()}` : 'Limited to 2 scans per day.'}
+                </p>
+              </div>
+            </div>
+            {isPremium && <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-3 py-1.5 rounded uppercase tracking-wider whitespace-nowrap">Premium Unlocked</span>}
           </div>
         </div>
 
