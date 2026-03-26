@@ -39,11 +39,21 @@ export default function PartnerApply() {
           <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="text-emerald-400 w-10 h-10" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Application Received</h2>
-          <p className="text-slate-400 mb-8 leading-relaxed">
-            Thank you for your interest in SkillNova Enterprise. Our team will review your application for <strong>{formData.universityName}</strong>. If approved, you will receive an activation link via email.
+          <h2 className="text-2xl font-bold text-white mb-4">Application Under Review</h2>
+          <p className="text-slate-400 mb-6 leading-relaxed">
+            Thank you for your interest in SkillNova Enterprise. Our team is reviewing your application for <strong>{formData.universityName}</strong>.
           </p>
-          <Link to="/" className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-all">
+          <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-xl mb-8 text-left">
+            <h4 className="text-indigo-300 font-bold text-sm mb-2 flex items-center gap-2">
+              <Activity size={16} /> Next Steps
+            </h4>
+            <ul className="text-xs text-indigo-200/70 space-y-2">
+              <li>1. Standard enterprise review takes approx. <strong>24 hours</strong>.</li>
+              <li>2. Once 24 hours have passed, return to our Login portal.</li>
+              <li>3. Enter <strong>{formData.email}</strong> to check your approval status and activate your dashboard.</li>
+            </ul>
+          </div>
+          <Link to="/" className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-all inline-block w-full">
             Return to Home
           </Link>
         </div>

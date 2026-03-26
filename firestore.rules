@@ -45,11 +45,9 @@ service cloud.firestore {
   
     // --- ENTERPRISE APPLICATIONS ---
     match /partner_applications/{appId} {
-      // Anyone on the internet can submit an application
       allow create: if true; 
-      // Only the SuperAdmin can read, approve, or delete applications
-      allow read, update, delete: if request.auth != null && isSuperAdmin();
-    }
-    
+      allow read: if true; // <-- CHANGED: Allows the Login page to check status
+      allow update, delete: if request.auth != null && isSuperAdmin();
+    }    
   } 
 } 
