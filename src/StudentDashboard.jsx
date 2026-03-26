@@ -29,7 +29,7 @@ export default function StudentDashboard() {
   // --- DYNAMIC CASCADING TIER STATE ---
   const [partnerTier, setPartnerTier] = useState('free');
   const isPremium = partnerTier === 'premium';
-  const isPublicUser = tenantId === 'public'; // Check if they are a regular public user
+  const isPublicUser = tenantId === 'public'; 
 
   const [analyzing, setAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -239,7 +239,13 @@ Output EXACTLY this JSON structure:
     }
   };
 
-  const handleExportPDF = async () => {
+  // --- NEW: LOCKED EXPORT HANDLER ---
+  const handleExportClick = async () => {
+    if (!isPremium) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    
     if (!reportRef.current) return;
     setExporting(true);
     try {
@@ -253,7 +259,6 @@ Output EXACTLY this JSON structure:
   };
 
   const handleGenerateCoverLetter = async () => {
-    // If they aren't premium, instantly show the beautiful upgrade modal!
     if (!isPremium) {
       setShowUpgradeModal(true);
       return;
@@ -379,7 +384,16 @@ Output EXACTLY this JSON structure:
               <button onClick={handleGenerateCoverLetter} className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 rounded-lg text-sm font-medium text-indigo-300 transition-colors shadow-sm">
                  {isPremium ? <Sparkles size={16} /> : <Lock size={16} className="text-rose-400" />} Draft Cover Letter
               </button>
-              <button onClick={handleExportPDF} disabled={exporting} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm font-medium text-white transition-colors shadow-sm">{exporting ? <Activity size={16} className="animate-spin" /> : <Download size={16} className="text-emerald-400" />}{exporting ? 'Generating PDF...' : 'Download Report'}</button>
+              
+              {/* LOCKED EXPORT BUTTON */}
+              <button onClick={handleExportClick} disabled={exporting} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm font-medium text-white transition-colors shadow-sm">
+                {exporting ? (
+                  <Activity size={16} className="animate-spin" />
+                ) : (
+                  isPremium ? <Download size={16} className="text-emerald-400" /> : <Lock size={16} className="text-rose-400" />
+                )}
+                {exporting ? 'Generating PDF...' : 'Download Report'}
+              </button>
             </div>
 
             <div ref={reportRef} className="space-y-6 p-6 -m-6 bg-[#0f172a] rounded-2xl">
@@ -444,7 +458,7 @@ Output EXACTLY this JSON structure:
                   </div>
 
                   <div>
-                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><TrendingUp className="text-indigo-400" size={18} /> Actionable Feedback & Roadmap</h4>
+                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><TrendingUp className="text-indigo-400" size={18} /> Actionable Improvement Roadmap</h4>
                     <ul className="space-y-4">
                       {aiResult.microActions && aiResult.microActions.map((action, i) => (
                         <li key={i} className="bg-slate-800/50 p-5 rounded-lg border border-slate-700 text-sm text-slate-300 flex items-start gap-4 hover:border-indigo-500/50 transition-colors">
@@ -502,7 +516,7 @@ Output EXACTLY this JSON structure:
                   <li className="flex items-center gap-2"><CheckCircle className="text-emerald-400" size={16}/> 10 Daily ATS Scans</li>
                   <li className="flex items-center gap-2"><CheckCircle className="text-emerald-400" size={16}/> AI-Generated Cover Letters</li>
                   <li className="flex items-center gap-2"><CheckCircle className="text-emerald-400" size={16}/> Advanced Skill Gap Analysis</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="text-emerald-400" size={16}/> Personalized Action Plan</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="text-emerald-400" size={16}/> Downloadable PDF Reports</li>
                 </ul>
 
                 <button onClick={() => {setShowUpgradeModal(false); alert("Billing integration goes here!");}} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2">
