@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Users, FileText, TrendingDown, AlertTriangle, Activity, CheckCircle, XCircle, Rocket, Target, BarChart3 } from 'lucide-react';
+import { Users, FileText, TrendingDown, AlertTriangle, Activity, CheckCircle, XCircle, Rocket, Target, BarChart3, UploadCloud } from 'lucide-react';
 import { auth, db } from './firebase';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, writeBatch, doc } from 'firebase/firestore';
 
 export default function AdminDashboard() {
   const [scans, setScans] = useState([]);
   const [loading, setLoading] = useState(true);
-  
   const [revealedEmails, setRevealedEmails] = useState(new Set());
+
+  // --- BULK UPLOAD STATES ---
+  const [csvFile, setCsvFile] = useState(null);
+  const [targetTenantId, setTargetTenantId] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState({ text: '', type: '' });
 
   const [stats, setStats] = useState({
     total: 0,
@@ -32,13 +37,9 @@ export default function AdminDashboard() {
 
       if (scanData.length > 0) {
         const total = scanData.length;
-        
-        // Calculate unique users
         const uniqueEmails = new Set(scanData.map(s => s.userEmail));
-        
         const totalScore = scanData.reduce((acc, curr) => acc + (curr.roleMatchScore || curr.score || 0), 0);
         const totalMarketProb = scanData.reduce((acc, curr) => acc + (curr.marketProbability || 0), 0);
-        
         const passedCount = scanData.filter(s => (s.roleMatchScore || s.score) >= 60).length;
         
         const skillCounts = {};
@@ -81,6 +82,69 @@ export default function AdminDashboard() {
 
     return () => unsubscribe();
   }, []);
+
+  // --- CSV BULK UPLOAD LOGIC ---
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === "text/csv") {
+      setCsvFile(file);
+      setUploadMessage({ text: '', type: '' });
+    } else {
+      setCsvFile(null);
+      setUploadMessage({ text: 'Please upload a valid .csv file.', type: 'error' });
+    }
+  };
+
+  const processBulkUpload = async () => {
+    if (!csvFile || !targetTenantId.trim()) {
+      setUploadMessage({ text: 'Provide both a CSV file and a Tenant ID.', type: 'error' });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadMessage({ text: 'Parsing CSV...', type: 'info' });
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const text = e.target.result;
+      // Extract emails (assuming they are in the first column or separated by newlines)
+      const rawLines = text.split('\n');
+      const emailsToUpload = rawLines
+        .map(line => line.split(',')[0].trim().toLowerCase()) // Take first column, lowercase
+        .filter(email => email.includes('@')); // Basic validation
+
+      if (emailsToUpload.length === 0) {
+        setUploadMessage({ text: 'No valid emails found in the CSV.', type: 'error' });
+        setIsUploading(false);
+        return;
+      }
+
+      try {
+        setUploadMessage({ text: `Writing ${emailsToUpload.length} users to database...`, type: 'info' });
+        
+        // Firestore batches can handle 500 writes at a time
+        const batch = writeBatch(db);
+        const finalTenantId = targetTenantId.trim().toUpperCase();
+
+        emailsToUpload.slice(0, 500).forEach((email) => {
+          const studentRef = doc(db, 'allowed_students', email);
+          batch.set(studentRef, { tenantId: finalTenantId });
+        });
+
+        await batch.commit();
+
+        setUploadMessage({ text: `Success! ${emailsToUpload.slice(0, 500).length} students onboarded to ${finalTenantId}.`, type: 'success' });
+        setCsvFile(null);
+        setTargetTenantId('');
+      } catch (error) {
+        console.error("Batch write failed:", error);
+        setUploadMessage({ text: 'Database error. Check console.', type: 'error' });
+      } finally {
+        setIsUploading(false);
+      }
+    };
+    reader.readAsText(csvFile);
+  };
 
   const getScoreColor = (score) => {
     if (score >= 75) return 'text-emerald-400';
@@ -201,15 +265,61 @@ export default function AdminDashboard() {
         {/* MAIN DASHBOARD GRID */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
           
-          {/* LEFT SIDEBAR: ANALYTICS */}
+          {/* LEFT SIDEBAR: ANALYTICS & UPLOAD */}
           <div className="xl:col-span-3 space-y-6">
+            
+            {/* NEW: ENTERPRISE CSV UPLOADER */}
+            <div className="bg-gradient-to-br from-indigo-900/30 to-purple-900/10 border border-indigo-500/30 p-6 rounded-2xl flex flex-col relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                <UploadCloud size={80} />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2 relative z-10">
+                <UploadCloud className="text-indigo-400" size={20} />
+                Bulk Onboard Students
+              </h3>
+              <p className="text-xs text-slate-400 mb-5 relative z-10">Upload a CSV of emails to instantly grant premium access to a specific cohort.</p>
+              
+              <div className="space-y-4 relative z-10">
+                <input 
+                  type="text" 
+                  value={targetTenantId}
+                  onChange={(e) => setTargetTenantId(e.target.value)}
+                  placeholder="Target Cohort (e.g. VIT)" 
+                  className="w-full bg-slate-900/50 border border-slate-700 focus:border-indigo-500 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-500 outline-none uppercase"
+                />
+                
+                <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-4 cursor-pointer transition-all ${csvFile ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-700 bg-slate-800/50 hover:border-indigo-500/30'}`}>
+                  <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                  {csvFile ? (
+                    <div className="text-center"><p className="text-emerald-400 text-xs font-medium truncate w-48">{csvFile.name}</p></div>
+                  ) : (
+                    <div className="text-center"><p className="text-slate-400 text-xs font-medium">Click to attach .CSV</p></div>
+                  )}
+                </label>
+
+                {uploadMessage.text && (
+                  <div className={`text-[11px] font-medium p-2 rounded ${uploadMessage.type === 'error' ? 'text-rose-400 bg-rose-500/10' : uploadMessage.type === 'success' ? 'text-emerald-400 bg-emerald-500/10' : 'text-blue-400 bg-blue-500/10'}`}>
+                    {uploadMessage.text}
+                  </div>
+                )}
+
+                <button 
+                  onClick={processBulkUpload} 
+                  disabled={isUploading || !csvFile || !targetTenantId}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-2.5 rounded-lg transition-all shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isUploading ? <Activity size={16} className="animate-spin" /> : 'Provision Accounts'}
+                </button>
+              </div>
+            </div>
+
             <div className="bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl flex flex-col">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <TrendingDown className="text-rose-400" size={20} />
                 Critical Skill Gaps
               </h3>
               <p className="text-xs text-slate-400 mb-6">Most frequent missing core requirements.</p>
-              <div className="space-y-5 overflow-y-auto max-h-[380px] pr-3 custom-scrollbar">
+              <div className="space-y-5 overflow-y-auto max-h-[250px] pr-3 custom-scrollbar">
                 {stats.topSkills.length > 0 ? stats.topSkills.map((skill, index) => (
                   <div key={`gap-${index}`}>
                     <div className="flex justify-between text-xs mb-2">
@@ -232,7 +342,7 @@ export default function AdminDashboard() {
                 Top Recommended Upskills
               </h3>
               <p className="text-xs text-slate-400 mb-6">Technologies most frequently suggested by the AI to bridge candidate skill gaps.</p>
-              <div className="space-y-5 overflow-y-auto max-h-[380px] pr-3 custom-scrollbar">
+              <div className="space-y-5 overflow-y-auto max-h-[250px] pr-3 custom-scrollbar">
                 {stats.topRecommended.length > 0 ? stats.topRecommended.map((skill, index) => (
                   <div key={`rec-${index}`}>
                     <div className="flex justify-between text-xs mb-2">

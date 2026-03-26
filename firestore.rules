@@ -2,6 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // --- HELPER FUNCTIONS ---
     function isSuperAdmin() {
       return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'superadmin';
     }
@@ -10,6 +11,7 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.tenantId;
     }
 
+    // --- ATS SCANS COLLECTION ---
     match /ats_scans/{scanId} {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow read: if request.auth != null && (
@@ -20,9 +22,24 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
 
+    // --- ADMINS COLLECTION ---
     match /admins/{adminId} {
-      // THE FIX: Allow anyone logged in to verify partner codes
       allow read: if request.auth != null;
+      allow write: if request.auth != null && isSuperAdmin();
+    }
+
+    // --- ENTERPRISE STUDENT WHITELIST ---
+    match /allowed_students/{emailId} {
+      // 1. Students can read their own whitelist document
+      // 2. SuperAdmins can read all
+      // 3. Partners can read students assigned to their tenantId
+      allow read: if request.auth != null && (
+        request.auth.token.email == emailId || 
+        isSuperAdmin() || 
+        (getAdminTenantId() == resource.data.tenantId)
+      );
+      
+      // Only SuperAdmins can add/remove students from the whitelist
       allow write: if request.auth != null && isSuperAdmin();
     }
   }
