@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Briefcase, FileUp, AlertTriangle, CheckCircle, Activity, 
-  Clock, FileText, LayoutTemplate, Building2, Search, ChevronDown, Download, Sparkles, Copy, X, TrendingUp, Info, Rocket, Lock, ShieldCheck
+  Clock, FileText, LayoutTemplate, Building2, Search, ChevronDown, Download, Sparkles, Copy, X, TrendingUp, Info, Rocket, Lock, ShieldCheck, Crown, ArrowRight
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore'; 
 import Groq from "groq-sdk";
-import { useAuth } from './AuthContext'; // <-- Import to grab the tenantId
+import { useAuth } from './AuthContext';
 
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -24,13 +24,17 @@ const partnerCompanies = [
 ];
 
 export default function StudentDashboard() {
-  // --- NEW: GRAB TENANT ID FROM CONTEXT ---
   const { tenantId } = useAuth(); 
-  const isPremium = tenantId && tenantId !== 'public';
+  
+  // --- DYNAMIC CASCADING TIER STATE ---
+  const [partnerTier, setPartnerTier] = useState('free');
+  const isPremium = partnerTier === 'premium';
+  const isPublicUser = tenantId === 'public'; // Check if they are a regular public user
 
   const [analyzing, setAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false); 
   
   const [inputMode, setInputMode] = useState('role');
   const [customJobRole, setCustomJobRole] = useState('');
@@ -52,6 +56,26 @@ export default function StudentDashboard() {
   const [copied, setCopied] = useState(false);
 
   const reportRef = useRef(null);
+
+  // --- FETCH PARTNER TIER ON LOAD ---
+  useEffect(() => {
+    const fetchTier = async () => {
+      if (!tenantId || isPublicUser) {
+        setPartnerTier('free');
+        return;
+      }
+      try {
+        const q = query(collection(db, 'admins'), where('tenantId', '==', tenantId));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          setPartnerTier(snap.docs[0].data().tier || 'free');
+        }
+      } catch (err) {
+        console.error("Tier check failed:", err);
+      }
+    };
+    fetchTier();
+  }, [tenantId, isPublicUser]);
 
   useEffect(() => {
     const lastScan = localStorage.getItem('lastScanTime');
@@ -121,10 +145,13 @@ export default function StudentDashboard() {
       const maxScans = isPremium ? 10 : 2;
 
       if (todaysScans.length >= maxScans) {
-        setErrorMsg(isPremium
-          ? "You have reached your university's daily limit of 10 scans. Please try again tomorrow."
-          : "Free daily limit reached (2/2). Ask your university to register your email to unlock 10 daily scans and Cover Letters."
-        );
+        if (isPremium) {
+          setErrorMsg("You have reached your daily limit of 10 scans. Please try again tomorrow.");
+        } else if (isPublicUser) {
+          setErrorMsg("Free daily limit reached (2/2). Please try again tomorrow, or upgrade to Premium for 10 daily scans.");
+        } else {
+          setErrorMsg("Free daily limit reached (2/2). Ask your university to upgrade to Premium to unlock 10 daily scans.");
+        }
         setAnalyzing(false);
         return;
       }
@@ -187,7 +214,7 @@ Output EXACTLY this JSON structure:
         await addDoc(collection(db, 'ats_scans'), {
           userId: auth.currentUser?.uid || 'anonymous',
           userEmail: auth.currentUser?.email || 'unknown_email',
-          tenantId: tenantId, // Auto-attaches their pre-registered tenantId from AuthContext!
+          tenantId: tenantId, 
           targetRole: finalJobTarget,
           atsFormatScore: parsedData.atsFormatScore,
           roleMatchScore: parsedData.roleMatchScore,
@@ -226,9 +253,9 @@ Output EXACTLY this JSON structure:
   };
 
   const handleGenerateCoverLetter = async () => {
+    // If they aren't premium, instantly show the beautiful upgrade modal!
     if (!isPremium) {
-      setCoverLetter("🔒 PREMIUM FEATURE\n\nCover Letter generation is strictly locked on the Free Tier.\n\nYour university must pre-register your email address to unlock AI-generated cover letters tailored perfectly to beat the ATS.");
-      setShowLetterModal(true);
+      setShowUpgradeModal(true);
       return;
     }
 
@@ -268,19 +295,19 @@ Output EXACTLY this JSON structure:
           <p className="text-slate-400 text-lg">See your exact hiring probability based on the skills you actually possess.</p>
         </header>
 
-        {/* --- DYNAMIC PREMIUM STATUS BADGE (NO INPUT BOX) --- */}
+        {/* --- DYNAMIC PREMIUM STATUS BADGE --- */}
         <div className="flex justify-center mb-8 relative z-0">
-          <div className={`w-full max-w-lg bg-[#1e293b]/80 border ${isPremium ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-slate-700'} rounded-xl px-6 py-4 flex items-center justify-between transition-all`}>
+          <div className={`w-full max-w-lg bg-[#1e293b]/80 border ${isPremium ? 'border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.15)]' : 'border-slate-700'} rounded-xl px-6 py-4 flex items-center justify-between transition-all`}>
             <div className="flex items-center gap-3">
-              {isPremium ? <ShieldCheck className="text-emerald-400" size={24} /> : <Building2 className="text-slate-500" size={24} />}
+              {isPremium ? <Crown className="text-indigo-400" size={24} /> : <Building2 className="text-slate-500" size={24} />}
               <div>
-                <p className="text-white font-bold">{isPremium ? 'Enterprise Access Verified' : 'Standard Free Tier'}</p>
+                <p className="text-white font-bold">{isPremium ? 'Premium Access Verified' : 'Standard Free Tier'}</p>
                 <p className="text-slate-400 text-xs">
-                  {isPremium ? `Cohort: ${tenantId.toUpperCase()}` : 'Limited to 2 scans per day.'}
+                  {isPublicUser ? 'Public User (2 Scans/Day)' : `Cohort: ${tenantId.toUpperCase()}`}
                 </p>
               </div>
             </div>
-            {isPremium && <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-3 py-1.5 rounded uppercase tracking-wider whitespace-nowrap">Premium Unlocked</span>}
+            {isPremium && <span className="bg-indigo-500/10 text-indigo-400 text-[10px] font-bold px-3 py-1.5 rounded uppercase tracking-wider whitespace-nowrap">Full Access</span>}
           </div>
         </div>
 
@@ -357,6 +384,7 @@ Output EXACTLY this JSON structure:
 
             <div ref={reportRef} className="space-y-6 p-6 -m-6 bg-[#0f172a] rounded-2xl">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* These high-level stats remain visible as the "Hook" */}
                 <div className="bg-[#1e293b]/60 border border-slate-700 rounded-2xl p-6">
                   <div className="flex justify-between items-center mb-4"><h3 className="text-md font-bold text-white flex items-center gap-2"><LayoutTemplate className="text-blue-400" size={18} /> ATS Readability</h3><span className={`text-2xl font-bold ${getScoreText(aiResult.atsFormatScore)}`}>{aiResult.atsFormatScore}%</span></div>
                   <div className="w-full bg-slate-800 rounded-full h-2.5 mb-4"><div className={`h-2.5 rounded-full ${getScoreColor(aiResult.atsFormatScore)} transition-all duration-1000`} style={{ width: `${aiResult.atsFormatScore}%` }}></div></div>
@@ -377,8 +405,9 @@ Output EXACTLY this JSON structure:
                 </div>
               </div>
 
-              <div className="bg-[#1e293b]/40 border border-slate-800 rounded-2xl p-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* EVERYTHING IN HERE GETS BLURRED IF NOT PREMIUM */}
+              <div className="bg-[#1e293b]/40 border border-slate-800 rounded-2xl p-8 relative overflow-hidden">
+                <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 transition-all duration-500 ${!isPremium ? 'blur-[6px] opacity-30 select-none pointer-events-none' : ''}`}>
                   
                   <div className="space-y-8">
                     <div>
@@ -411,11 +440,7 @@ Output EXACTLY this JSON structure:
                           <span key={i} className="bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-full text-sm font-medium text-blue-400 shadow-sm">{skill}</span>
                         )) : <span className="text-slate-500 text-sm">No new recommendations available.</span>}
                       </div>
-                      <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl mt-2 animate-fade-in-up">
-                        <p className="text-sm text-indigo-200 flex items-start gap-2 leading-relaxed"><Sparkles size={16} className="text-indigo-400 mt-0.5 flex-shrink-0" /><span><strong>Career Growth:</strong> Mastering these trending technologies will significantly elevate your market value and set you apart from other candidates in this role.</span></p>
-                      </div>
                     </div>
-
                   </div>
 
                   <div>
@@ -430,20 +455,71 @@ Output EXACTLY this JSON structure:
                     </ul>
                   </div>
                 </div>
+
+                {/* FULL-COVERAGE PAYWALL OVERLAY */}
+                {!isPremium && (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0f172a]/40 backdrop-blur-[2px] p-6 text-center">
+                    <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
+                      <Lock className="text-indigo-400 w-8 h-8" />
+                    </div>
+                    <h4 className="text-white font-bold text-xl mb-2">Deep Insights Locked</h4>
+                    <p className="text-sm text-slate-300 mb-6 leading-relaxed max-w-md">
+                      {isPublicUser 
+                        ? "You are currently on the SkillNova Free Tier. Upgrade to Premium to reveal your exact skill gaps, validated skills, and actionable roadmap."
+                        : "Your institution is currently on the SkillNova Free Tier. Please contact your university administration and request they upgrade to Premium to reveal your exact skill gaps and actionable roadmap."
+                      }
+                    </p>
+                    <button onClick={() => setShowUpgradeModal(true)} className="px-8 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold rounded-xl text-sm shadow-lg transition-all">
+                      {isPublicUser ? "Upgrade to Premium" : "Contact Administrator"}
+                    </button>
+                  </div>
+                )}
               </div>
 
             </div>
           </div>
         )}
 
+        {/* --- UPGRADE TO PREMIUM MODAL --- */}
+        {showUpgradeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
+            <div className="bg-gradient-to-b from-[#1e293b] to-[#0f172a] border border-indigo-500/30 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col relative">
+              <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10"><X size={20} /></button>
+              
+              <div className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/30">
+                  <Crown className="text-white w-10 h-10" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-3">Unlock SkillNova Premium</h2>
+                <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                  {isPublicUser 
+                    ? "You are currently on the basic Free Tier. Upgrade to Premium to unlock powerful tools." 
+                    : "Your institution is currently on the basic Free Tier. Upgrade to Enterprise Premium to unlock powerful tools."
+                  }
+                </p>
+                
+                <ul className="text-left text-sm text-slate-300 space-y-3 mb-8 bg-slate-800/50 p-5 rounded-xl border border-slate-700">
+                  <li className="flex items-center gap-2"><CheckCircle className="text-emerald-400" size={16}/> 10 Daily ATS Scans</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="text-emerald-400" size={16}/> AI-Generated Cover Letters</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="text-emerald-400" size={16}/> Advanced Skill Gap Analysis</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="text-emerald-400" size={16}/> Personalized Action Plan</li>
+                </ul>
+
+                <button onClick={() => {setShowUpgradeModal(false); alert("Billing integration goes here!");}} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2">
+                  {isPublicUser ? "Upgrade Now" : "Contact Sales to Upgrade"} <ArrowRight size={18}/>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* --- COVER LETTER MODAL --- */}
-        {showLetterModal && (
+        {showLetterModal && isPremium && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
             <div className="bg-[#1e293b] border border-slate-700 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
               <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                   {isPremium ? <Sparkles className="text-indigo-400" /> : <Lock className="text-rose-400" />} 
-                   {isPremium ? 'AI Cover Letter Draft' : 'Premium Locked'}
+                   <Sparkles className="text-indigo-400" /> AI Cover Letter Draft
                 </h3>
                 <button onClick={() => setShowLetterModal(false)} className="text-slate-400 hover:text-rose-400 transition-colors"><X size={24} /></button>
               </div>
@@ -451,12 +527,12 @@ Output EXACTLY this JSON structure:
                 {isGeneratingLetter ? (
                   <div className="flex flex-col items-center justify-center py-12 space-y-4"><Activity className="text-indigo-500 animate-spin w-10 h-10" /><p className="text-slate-400 animate-pulse">Drafting your perfect response...</p></div>
                 ) : (
-                  <div className={`space-y-4 text-slate-300 leading-relaxed whitespace-pre-wrap ${isPremium ? 'font-serif text-lg bg-[#0f172a] p-6 rounded-xl border border-slate-800 font-mono' : 'text-center py-10'}`}>
+                  <div className="space-y-4 text-slate-300 leading-relaxed whitespace-pre-wrap font-serif text-lg bg-[#0f172a] p-6 rounded-xl border border-slate-800 font-mono">
                     {coverLetter}
                   </div>
                 )}
               </div>
-              {!isGeneratingLetter && isPremium && (
+              {!isGeneratingLetter && (
                 <div className="px-6 py-4 border-t border-slate-700 bg-slate-800/50 flex justify-end">
                   <button onClick={copyToClipboard} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}>{copied ? <CheckCircle size={18} /> : <Copy size={18} />}{copied ? 'Copied to Clipboard!' : 'Copy Letter'}</button>
                 </div>
