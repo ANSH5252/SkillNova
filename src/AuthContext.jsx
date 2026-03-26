@@ -16,15 +16,16 @@ export function AuthProvider({ children }) {
   const [tenantId, setTenantId] = useState(null);
   
   const [loading, setLoading] = useState(true);
-  const [isFetchingRole, setIsFetchingRole] = useState(true); // --- NEW STATE ---
+  const [isFetchingRole, setIsFetchingRole] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
-      setIsFetchingRole(true); // Tell the app we are checking roles
+      setIsFetchingRole(true); 
       
       if (user) {
         try {
+          // 1. Check if they are an Admin/Partner
           const adminDocRef = doc(db, 'admins', user.email);
           const adminDocSnap = await getDoc(adminDocRef);
           
@@ -34,15 +35,28 @@ export function AuthProvider({ children }) {
             setUserRole(data.role || 'partner'); 
             setTenantId(data.tenantId || null);  
           } else {
-            setIsAdmin(false);
-            setUserRole('student');
-            setTenantId(null);
+            // 2. Not an Admin. Are they a pre-registered Premium Student?
+            const studentDocRef = doc(db, 'allowed_students', user.email);
+            const studentDocSnap = await getDoc(studentDocRef);
+
+            if (studentDocSnap.exists()) {
+              // University pre-registered them!
+              const studentData = studentDocSnap.data();
+              setIsAdmin(false);
+              setUserRole('student');
+              setTenantId(studentData.tenantId); // Auto-assign to cohort
+            } else {
+              // Standard Free Tier Student
+              setIsAdmin(false);
+              setUserRole('student');
+              setTenantId('public'); 
+            }
           }
         } catch (error) {
-          console.error("Error checking admin status:", error);
+          console.error("Error checking auth status:", error);
           setIsAdmin(false);
           setUserRole('student');
-          setTenantId(null);
+          setTenantId('public');
         }
       } else {
         setIsAdmin(false);
@@ -50,8 +64,8 @@ export function AuthProvider({ children }) {
         setTenantId(null);
       }
       
-      setIsFetchingRole(false); // Done checking roles
-      setLoading(false); // Done initial auth check
+      setIsFetchingRole(false); 
+      setLoading(false); 
     });
 
     return unsubscribe;
@@ -62,7 +76,7 @@ export function AuthProvider({ children }) {
     isAdmin,
     userRole,
     tenantId,
-    isFetchingRole // --- EXPORT THE STATE ---
+    isFetchingRole
   };
 
   return (
