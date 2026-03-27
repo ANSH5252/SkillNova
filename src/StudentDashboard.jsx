@@ -4,7 +4,8 @@ import {
   Clock, FileText, LayoutTemplate, Building2, Search, ChevronDown, Download, Sparkles, Copy, X, TrendingUp, Info, Rocket, Lock, ShieldCheck, Crown, ArrowRight
 } from 'lucide-react';
 import { auth, db } from './firebase';
-import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore'; 
+// Notice the newly added doc and getDoc imports here!
+import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, getDoc } from 'firebase/firestore'; 
 import Groq from "groq-sdk";
 import { useAuth } from './AuthContext';
 
@@ -26,9 +27,14 @@ const partnerCompanies = [
 export default function StudentDashboard() {
   const { tenantId } = useAuth(); 
   
+  // --- TESTER BYPASS STATE ---
+  const [isTester, setIsTester] = useState(false);
+
   // --- DYNAMIC CASCADING TIER STATE ---
   const [partnerTier, setPartnerTier] = useState('free');
-  const isPremium = partnerTier === 'premium';
+  
+  // If they are a tester, automatically grant them Premium UI
+  const isPremium = partnerTier === 'premium' || isTester; 
   const isPublicUser = tenantId === 'public'; 
 
   const [analyzing, setAnalyzing] = useState(false);
@@ -58,9 +64,27 @@ export default function StudentDashboard() {
 
   const reportRef = useRef(null);
 
-  // --- FETCH PARTNER TIER ON LOAD ---
+  // --- FETCH PARTNER TIER & QA STATUS ON LOAD ---
   useEffect(() => {
-    const fetchTier = async () => {
+    const checkAccessLevels = async () => {
+      // 1. Check if user is in the QA Database
+      const currentEmail = auth.currentUser?.email;
+      if (currentEmail) {
+        try {
+          const qaRef = doc(db, 'qa_accounts', currentEmail.toLowerCase());
+          const qaSnap = await getDoc(qaRef);
+          // If the document exists and active is true, they are a tester!
+          if (qaSnap.exists() && qaSnap.data().active === true) {
+            setIsTester(true);
+          } else {
+            setIsTester(false);
+          }
+        } catch (e) {
+          console.error("QA check failed:", e);
+        }
+      }
+
+      // 2. Check Partner Tier status
       if (!tenantId || isPublicUser) {
         setPartnerTier('free');
         return;
@@ -75,8 +99,9 @@ export default function StudentDashboard() {
         console.error("Tier check failed:", err);
       }
     };
-    fetchTier();
-  }, [tenantId, isPublicUser]);
+    
+    checkAccessLevels();
+  }, [tenantId, isPublicUser, auth.currentUser?.email]); // Added email dependency so it re-runs on login
 
   // --- FETCH SCANS USED TODAY ---
   const fetchScansUsedToday = async () => {
@@ -98,7 +123,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     fetchScansUsedToday();
-  }, []);
+  }, [auth.currentUser?.uid]); // Ensures it fetches when user object loads
 
   useEffect(() => {
     const lastScan = localStorage.getItem('lastScanTime');
@@ -165,10 +190,10 @@ export default function StudentDashboard() {
         return data.timestamp.toDate() >= startOfToday;
       });
 
-      const maxScans = isPremium ? 10 : 2;
+      const maxScans = isTester ? 9999 : (isPremium ? 10 : 2);
 
       if (todaysScans.length >= maxScans) {
-        if (isPremium) {
+        if (isPremium && !isTester) {
           setErrorMsg("You have reached your daily limit of 10 scans. Please try again tomorrow.");
         } else if (isPublicUser) {
           setErrorMsg("Free daily limit reached (2/2). Please try again tomorrow, or upgrade to Premium for 10 daily scans.");
@@ -263,7 +288,6 @@ Output EXACTLY this JSON structure:
     }
   };
 
-  // --- NEW: LOCKED EXPORT HANDLER ---
   const handleExportClick = async () => {
     if (!isPremium) {
       setShowUpgradeModal(true);
@@ -332,13 +356,13 @@ Output EXACTLY this JSON structure:
               <div>
                 <p className="text-white font-bold">{isPremium ? 'Premium Access Verified' : 'Standard Free Tier'}</p>
                 <p className="text-slate-400 text-xs">
-                  {isPublicUser ? 'Public User (2 Scans/Day)' : `Cohort: ${tenantId.toUpperCase()}`}
+                  {isTester ? 'Developer QA Bypass Mode' : (isPublicUser ? 'Public User (2 Scans/Day)' : `Cohort: ${tenantId.toUpperCase()}`)}
                 </p>
               </div>
             </div>
             {/* SCANS REMAINING PILL */}
             {(() => {
-              const maxScans = isPremium ? 10 : 2;
+              const maxScans = isTester ? 9999 : (isPremium ? 10 : 2);
               const remaining = Math.max(0, maxScans - scansUsedToday);
               const isExhausted = remaining === 0;
               return (
@@ -351,7 +375,9 @@ Output EXACTLY this JSON structure:
                 }`}>
                   <span className={`text-xl font-extrabold leading-none ${
                     isExhausted ? 'text-rose-400' : remaining <= 1 ? 'text-amber-400' : 'text-emerald-400'
-                  }`}>{remaining}/{maxScans}</span>
+                  }`}>
+                    {isTester ? '∞' : `${remaining}/${maxScans}`}
+                  </span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Scans Left</span>
                 </div>
               );
