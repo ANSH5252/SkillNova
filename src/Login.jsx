@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, ShieldCheck, Clock, XCircle, Activity, Building2, LogIn } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ShieldCheck, Clock, XCircle, Activity, Building2, LogIn, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -28,6 +28,7 @@ export default function Login() {
   
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // --- CORE ROUTING ENGINE ---
   const checkAdminAndRoute = async (userEmail) => {
@@ -243,9 +244,12 @@ export default function Login() {
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                       <input 
-                        type="password" required autoFocus value={password} onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-slate-900/50 border border-slate-700 focus:border-emerald-500 rounded-xl py-3.5 pl-11 pr-4 text-white outline-none transition-colors" placeholder="••••••••"
+                        type={showPassword ? 'text' : 'password'} required autoFocus value={password} onChange={(e) => setPassword(e.target.value)}
+                        className="w-full bg-slate-900/50 border border-slate-700 focus:border-emerald-500 rounded-xl py-3.5 pl-11 pr-11 text-white outline-none transition-colors" placeholder="••••••••"
                       />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
                     </div>
                   </div>
                   <button type="submit" disabled={loading || !password} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center mt-5 shadow-lg shadow-emerald-500/25 disabled:opacity-50">
@@ -277,9 +281,12 @@ export default function Login() {
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                     <input 
-                      type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-slate-900/50 border border-slate-700 focus:border-indigo-500 rounded-xl py-3.5 pl-11 pr-4 text-white outline-none transition-colors" placeholder="••••••••"
+                      type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-slate-900/50 border border-slate-700 focus:border-indigo-500 rounded-xl py-3.5 pl-11 pr-11 text-white outline-none transition-colors" placeholder="••••••••"
                     />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
                 <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 disabled:opacity-50">

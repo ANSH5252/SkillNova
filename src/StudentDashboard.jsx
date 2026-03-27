@@ -48,6 +48,7 @@ export default function StudentDashboard() {
   const [aiResult, setAiResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [cooldown, setCooldown] = useState(0);
+  const [scansUsedToday, setScansUsedToday] = useState(0);
 
   const [extractedText, setExtractedText] = useState('');
   const [isGeneratingLetter, setIsGeneratingLetter] = useState(false);
@@ -76,6 +77,28 @@ export default function StudentDashboard() {
     };
     fetchTier();
   }, [tenantId, isPublicUser]);
+
+  // --- FETCH SCANS USED TODAY ---
+  const fetchScansUsedToday = async () => {
+    try {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const q = query(collection(db, 'ats_scans'), where('userId', '==', auth.currentUser?.uid || 'anonymous'));
+      const snapshot = await getDocs(q);
+      const count = snapshot.docs.filter(doc => {
+        const data = doc.data();
+        if (!data.timestamp) return true;
+        return data.timestamp.toDate() >= startOfToday;
+      }).length;
+      setScansUsedToday(count);
+    } catch (err) {
+      console.error('Failed to fetch scans count:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchScansUsedToday();
+  }, []);
 
   useEffect(() => {
     const lastScan = localStorage.getItem('lastScanTime');
@@ -230,6 +253,7 @@ Output EXACTLY this JSON structure:
 
       setCooldown(60);
       localStorage.setItem('lastScanTime', Date.now().toString());
+      fetchScansUsedToday();
 
     } catch (error) {
       console.error("System Error:", error);
@@ -312,7 +336,26 @@ Output EXACTLY this JSON structure:
                 </p>
               </div>
             </div>
-            {isPremium && <span className="bg-indigo-500/10 text-indigo-400 text-[10px] font-bold px-3 py-1.5 rounded uppercase tracking-wider whitespace-nowrap">Full Access</span>}
+            {/* SCANS REMAINING PILL */}
+            {(() => {
+              const maxScans = isPremium ? 10 : 2;
+              const remaining = Math.max(0, maxScans - scansUsedToday);
+              const isExhausted = remaining === 0;
+              return (
+                <div className={`flex flex-col items-center px-4 py-2 rounded-xl border text-center ${
+                  isExhausted
+                    ? 'bg-rose-500/10 border-rose-500/25'
+                    : remaining <= 1
+                    ? 'bg-amber-500/10 border-amber-500/25'
+                    : 'bg-emerald-500/10 border-emerald-500/25'
+                }`}>
+                  <span className={`text-xl font-extrabold leading-none ${
+                    isExhausted ? 'text-rose-400' : remaining <= 1 ? 'text-amber-400' : 'text-emerald-400'
+                  }`}>{remaining}/{maxScans}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Scans Left</span>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
