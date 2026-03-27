@@ -278,7 +278,7 @@ export default function PartnerDashboard() {
         
         {/* PREMIUM UPGRADE BANNER (Free Tier Only) */}
         {!isPremium && (
-          <div className="mb-8 p-6 bg-gradient-to-r from-indigo-600/20 via-purple-600/10 to-transparent border border-indigo-500/30 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in">
+          <div className="mb-8 p-6 bg-gradient-to-r from-indigo-600/20 via-purple-600/10 to-transparent border border-indigo-500/30 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 hover:scale-[1.01] hover:border-indigo-500/50 hover:shadow-[0_0_20px_rgba(99,102,241,0.1)] transition-all duration-300 animate-fade-in">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-indigo-500/20 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.3)]">
                 <Sparkles className="text-indigo-400" size={24} />
@@ -299,35 +299,35 @@ export default function PartnerDashboard() {
 
         {/* METRICS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center">
+          <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center transition-all duration-300 group hover:scale-105 hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]">
             <div><p className="text-slate-400 text-sm font-medium mb-1">Active Students</p><h4 className="text-3xl font-bold text-white">{stats.uniqueStudents}</h4></div>
-            <div className="bg-blue-500/10 p-3 rounded-xl border border-blue-500/20"><Users className="text-blue-400" size={22} /></div>
+            <div className="bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 transition-all duration-300 group-hover:bg-blue-500/20 group-hover:-translate-y-1"><Users className="text-blue-400" size={22} /></div>
           </div>
 
-          <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center">
+          <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center transition-all duration-300 group hover:scale-105 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]">
             <div><p className="text-slate-400 text-sm font-medium mb-1">Total Resume Scans</p><h4 className="text-3xl font-bold text-white">{stats.totalScans}</h4></div>
-            <div className="bg-purple-500/10 p-3 rounded-xl border border-purple-500/20"><FileText className="text-purple-400" size={22} /></div>
+            <div className="bg-purple-500/10 p-3 rounded-xl border border-purple-500/20 transition-all duration-300 group-hover:bg-purple-500/20 group-hover:-translate-y-1"><FileText className="text-purple-400" size={22} /></div>
           </div>
 
           {/* GATED METRIC: READINESS */}
-          <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center relative overflow-hidden group cursor-pointer" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+          <div className={`bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center relative overflow-hidden group cursor-pointer transition-all duration-300 ${isPremium ? 'hover:scale-105 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'hover:scale-[1.02] hover:border-slate-700'}`} onClick={() => !isPremium && setShowUpgradeModal(true)}>
             <div className={`transition-all duration-300 ${!isPremium ? 'blur-sm opacity-40' : ''}`}>
               <p className="text-slate-400 text-sm font-medium mb-1">Avg. Readiness</p>
               <h4 className={`text-3xl font-bold ${getScoreColor(stats.avgMatchScore)}`}>{stats.avgMatchScore}%</h4>
             </div>
-            <div className={`p-3 rounded-xl border transition-all ${!isPremium ? 'bg-slate-800 border-slate-700' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
+            <div className={`p-3 rounded-xl border transition-all duration-300 ${!isPremium ? 'bg-slate-800 border-slate-700' : 'bg-emerald-500/10 border-emerald-500/20 group-hover:bg-emerald-500/20 group-hover:-translate-y-1'}`}>
               <Target className={!isPremium ? 'text-slate-500' : 'text-emerald-400'} size={22} />
             </div>
             {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-[#1e293b]/40"><Lock className="text-indigo-400 group-hover:scale-110 transition-transform" size={24}/></div>}
           </div>
 
           {/* GATED METRIC: PLACEMENT */}
-          <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center relative overflow-hidden group cursor-pointer" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+          <div className={`bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center relative overflow-hidden group cursor-pointer transition-all duration-300 ${isPremium ? 'hover:scale-105 hover:border-indigo-500/50 hover:shadow-[0_0_20px_rgba(99,102,241,0.15)]' : 'hover:scale-[1.02] hover:border-slate-700'}`} onClick={() => !isPremium && setShowUpgradeModal(true)}>
             <div className={`transition-all duration-300 ${!isPremium ? 'blur-sm opacity-40' : ''}`}>
               <p className="text-slate-400 text-sm font-medium mb-1">Placement Prob.</p>
               <h4 className="text-3xl font-bold text-white">{stats.passRate}%</h4>
             </div>
-            <div className={`p-3 rounded-xl border transition-all ${!isPremium ? 'bg-slate-800 border-slate-700' : 'bg-indigo-500/10 border-indigo-500/20'}`}>
+            <div className={`p-3 rounded-xl border transition-all duration-300 ${!isPremium ? 'bg-slate-800 border-slate-700' : 'bg-indigo-500/10 border-indigo-500/20 group-hover:bg-indigo-500/20 group-hover:-translate-y-1'}`}>
               <TrendingUp className={!isPremium ? 'text-slate-500' : 'text-indigo-400'} size={22} />
             </div>
             {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-[#1e293b]/40"><Lock className="text-indigo-400 group-hover:scale-110 transition-transform" size={24}/></div>}
@@ -336,7 +336,7 @@ export default function PartnerDashboard() {
 
         {/* EXTRA INSIGHTS CARDS (Top Roles & At-Risk) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group cursor-pointer" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+          <div className={`bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 ${isPremium ? 'hover:scale-[1.02] hover:border-indigo-500/50 hover:shadow-[0_0_20px_rgba(99,102,241,0.15)]' : 'hover:scale-[1.01] hover:border-slate-700'}`} onClick={() => !isPremium && setShowUpgradeModal(true)}>
             <div className={`transition-all duration-300 ${!isPremium ? 'blur-sm opacity-40' : ''}`}>
               <h3 className="text-md font-bold text-white mb-4 flex items-center gap-2"><Briefcase className="text-indigo-400" size={18} /> Top Targeted Roles</h3>
               <div className="space-y-3">
@@ -352,15 +352,15 @@ export default function PartnerDashboard() {
             </div>
             {!isPremium && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1e293b]/20">
-                <Lock className="text-indigo-400 mb-2" size={24} />
+                <Lock className="text-indigo-400 mb-2 group-hover:scale-110 transition-transform" size={24} />
                 <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-tighter">Premium Insights Locked</span>
               </div>
             )}
           </div>
 
-          <div className="bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group cursor-pointer" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+          <div className={`bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 ${isPremium ? 'hover:scale-[1.02] hover:border-rose-500/50 hover:shadow-[0_0_20px_rgba(244,63,94,0.15)]' : 'hover:scale-[1.01] hover:border-slate-700'}`} onClick={() => !isPremium && setShowUpgradeModal(true)}>
             <div className={`transition-all duration-300 ${!isPremium ? 'blur-sm opacity-40' : ''}`}>
-              <h3 className="text-md font-bold text-white mb-4 flex items-center gap-2"><AlertTriangle className="text-rose-400" size={18} /> At-Risk Students</h3>
+              <h3 className="text-md font-bold text-white mb-4 flex items-center gap-2"><AlertTriangle className="text-rose-400 group-hover:animate-pulse" size={18} /> At-Risk Students</h3>
               <div className="flex items-center gap-4">
                 <div className="text-4xl font-extrabold text-rose-500">{stats.atRiskCount}</div>
                 <div className="text-xs text-slate-400 leading-tight">Students scored below 35% and need immediate curriculum intervention.</div>
@@ -379,7 +379,7 @@ export default function PartnerDashboard() {
             </div>
             {!isPremium && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1e293b]/20">
-                <Lock className="text-indigo-400 mb-2" size={24} />
+                <Lock className="text-indigo-400 mb-2 group-hover:scale-110 transition-transform" size={24} />
                 <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-tighter">Premium Gating Active</span>
               </div>
             )}
@@ -420,13 +420,13 @@ export default function PartnerDashboard() {
 
               {/* PAYWALL OVERLAY */}
               {!isPremium && (
-                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0f172a]/40 backdrop-blur-[2px] rounded-2xl border border-indigo-500/20 p-6 text-center">
-                  <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0f172a]/40 backdrop-blur-[2px] rounded-2xl border border-indigo-500/20 p-6 text-center group cursor-pointer hover:bg-[#0f172a]/60 transition-all duration-300" onClick={() => setShowUpgradeModal(true)}>
+                  <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(99,102,241,0.3)] group-hover:scale-110 transition-transform">
                     <Lock className="text-indigo-400 w-8 h-8" />
                   </div>
                   <h4 className="text-white font-bold text-lg mb-2">Premium Insights</h4>
                   <p className="text-xs text-slate-300 mb-6 leading-relaxed">Upgrade your cohort to SkillNova Enterprise to reveal deep curriculum gaps and precise hiring analytics.</p>
-                  <button onClick={() => setShowUpgradeModal(true)} className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-lg text-sm shadow-lg transition-all w-full">
+                  <button className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-lg text-sm shadow-lg transition-all w-full group-hover:shadow-indigo-500/50">
                     Upgrade to Premium
                   </button>
                 </div>
@@ -436,7 +436,7 @@ export default function PartnerDashboard() {
           </div>
 
           {/* RIGHT PANEL: STUDENT ROSTER (Always available, but standard view) */}
-          <div className="xl:col-span-2 bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl flex flex-col">
+          <div className="xl:col-span-2 bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl flex flex-col transition-all duration-300 hover:border-slate-700">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
               <h3 className="text-xl font-bold text-white flex items-center gap-2"><Users className="text-blue-400" /> Cohort Feed</h3>
               
@@ -492,9 +492,9 @@ export default function PartnerDashboard() {
                     .map((scan) => {
                       const score = scan.roleMatchScore || scan.score || 0;
                       return (
-                        <tr key={scan.id} className="hover:bg-slate-800/30 transition-colors">
+                        <tr key={scan.id} className="hover:bg-slate-800/30 transition-colors cursor-pointer group hover:scale-[1.01]">
                           <td className="py-4 pl-4 pr-2 border-b border-slate-800/50">
-                            <div className="font-medium text-slate-200 truncate">{scan.userEmail}</div>
+                            <div className="font-medium text-slate-200 truncate group-hover:text-indigo-300 transition-colors">{scan.userEmail}</div>
                             <div className="text-[11px] text-slate-500 mt-0.5">{scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleDateString() : 'Just now'}</div>
                           </td>
                           <td className="py-4 pr-2 border-b border-slate-800/50">
@@ -512,9 +512,9 @@ export default function PartnerDashboard() {
                           )}
                           <td className="py-4 pr-4 border-b border-slate-800/50">
                             {score >= 60 ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md"><CheckCircle size={14} /> Pass</span>
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md border border-emerald-500/20"><CheckCircle size={14} /> Pass</span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md"><AlertCircle size={14} /> Fail</span>
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md border border-amber-500/20"><AlertCircle size={14} /> Fail</span>
                             )}
                           </td>
                         </tr>
