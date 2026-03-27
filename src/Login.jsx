@@ -16,7 +16,6 @@ export default function Login() {
   const intendedPath = location.state?.intendedPath || '';
 
   // --- UI STATES ---
-  // Automatically open the correct mode based on the landing page button
   const [activeTab, setActiveTab] = useState((intendedPath === '/admin' || intendedPath === '/partner') ? 'partner' : 'student');
   const [isStudentSignUp, setIsStudentSignUp] = useState(false);
   
@@ -93,7 +92,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // 1. Check if already an admin
+      // 1. Check if already an admin in firestore
       const adminDoc = await getDoc(doc(db, 'admins', email.toLowerCase()));
       if (adminDoc.exists()) {
         setPartnerStep(2);
@@ -111,28 +110,44 @@ export default function Login() {
         else if (appStatus === 'rejected') setPartnerStatus('rejected');
         else setPartnerStep(2); 
       } else {
-        // 3. Not found anywhere. Move to password.
+        // 3. Not found anywhere. Failsafe to password step to obscure existence
         setPartnerStep(2);
       }
     } catch (error) {
       console.error(error);
-      // Failsafe: Bypass strict firestore rules block and let them try to log in
       setPartnerStep(2); 
     } finally {
       setLoading(false);
     }
   };
 
-  // --- PARTNER: STEP 2 (Final Login) ---
+  // --- PARTNER: STEP 2 (Final Login & Seamless Auth Hand-off) ---
   const handlePartnerFinalSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
     try {
+      // Attempt 1: Try to log them in normally
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       await checkAdminAndRoute(userCredential.user.email);
     } catch (error) {
-      setErrorMsg("Invalid credentials. Enterprise accounts must be pre-approved.");
+      // THE FIX: If they fail because they don't have an Auth account yet, we seamlessly create it!
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+         try {
+           // Create the account using the password they just typed
+           const newUser = await createUserWithEmailAndPassword(auth, email, password);
+           await checkAdminAndRoute(newUser.user.email);
+         } catch (createError) {
+           if (createError.code === 'auth/email-already-in-use') {
+             // If they actually DO exist but typed the wrong password, show a normal error.
+             setErrorMsg("Incorrect password. Please try again.");
+           } else {
+             setErrorMsg(createError.message.replace('Firebase: ', ''));
+           }
+         }
+      } else {
+         setErrorMsg("Invalid credentials. Enterprise accounts must be pre-approved.");
+      }
     } finally {
       setLoading(false);
     }
