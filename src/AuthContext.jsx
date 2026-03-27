@@ -25,8 +25,8 @@ export function AuthProvider({ children }) {
       
       if (user) {
         try {
-          // 1. Check if they are an Admin/Partner
-          const adminDocRef = doc(db, 'admins', user.email);
+          // 1. Check if they are an Admin/Partner/Employer (Forced lowercase for safety)
+          const adminDocRef = doc(db, 'admins', user.email.toLowerCase());
           const adminDocSnap = await getDoc(adminDocRef);
           
           if (adminDocSnap.exists()) {
@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
             setTenantId(data.tenantId || null);  
           } else {
             // 2. Not an Admin. Are they a pre-registered Premium Student?
-            const studentDocRef = doc(db, 'allowed_students', user.email);
+            const studentDocRef = doc(db, 'allowed_students', user.email.toLowerCase());
             const studentDocSnap = await getDoc(studentDocRef);
 
             if (studentDocSnap.exists()) {
