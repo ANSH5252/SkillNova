@@ -4,6 +4,7 @@ import { AuthProvider } from './AuthContext';
 import ProtectedRoute from './ProtectedRoute';
 import AdminDashboard from './AdminDashboard';
 import PartnerDashboard from './PartnerDashboard';
+import EmployerDashboard from './EmployerDashboard'; // <-- NEW IMPORT
 import StudentDashboard from './StudentDashboard';
 import PartnerApply from './PartnerApply';
 import Login from './Login';
@@ -132,7 +133,7 @@ function LandingPage() {
               <Zap size={18} /> Run Your Free Scan
             </Link>
             <Link to="/login" state={{ intendedPath: '/partner' }} className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2">
-              <Building2 size={18} /> Partner Dashboard
+              <Building2 size={18} /> Enterprise Portal
             </Link>
           </div>
         </div>
@@ -190,6 +191,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/apply" element={<PartnerApply />} />
+          
           {/* SUPER ADMIN ROUTE */}
           <Route path="/admin" element={
             <ProtectedRoute requireAdmin={true}>
@@ -197,10 +199,17 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* B2B PARTNER ROUTE */}
+          {/* B2B PARTNER ROUTE (Universities) */}
           <Route path="/partner" element={
             <ProtectedRoute requireAdmin={true}>
               <PartnerDashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* B2B EMPLOYER ROUTE (Companies) */}
+          <Route path="/employer" element={
+            <ProtectedRoute requireAdmin={true}>
+              <EmployerDashboard />
             </ProtectedRoute>
           } />
           

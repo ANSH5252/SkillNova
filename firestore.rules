@@ -6,6 +6,11 @@ service cloud.firestore {
     function isSuperAdmin() {
       return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'superadmin';
     }
+
+    // NEW: Helper function to check if the user is an employer
+    function isEmployer() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'employer';
+    }
     
     function getAdminTenantId() {
       return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.tenantId;
@@ -17,6 +22,7 @@ service cloud.firestore {
       allow read: if request.auth != null && (
         resource.data.userId == request.auth.uid ||
         isSuperAdmin() ||
+        isEmployer() || // NEW: Allow employers to read all scans
         (getAdminTenantId() == resource.data.tenantId)
       );
       allow update, delete: if isSuperAdmin();
