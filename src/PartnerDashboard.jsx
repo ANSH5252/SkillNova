@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, Users, Target, TrendingUp, Download, CheckCircle, 
-  XCircle, FileText, Activity, BookOpen, AlertCircle, UploadCloud, X, Lock, Crown, ArrowRight, Briefcase, AlertTriangle, Sparkles 
+  XCircle, FileText, Activity, BookOpen, AlertCircle, UploadCloud, X, Lock, Crown, ArrowRight, Briefcase, AlertTriangle, Sparkles, Search 
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { collection, query, where, onSnapshot, writeBatch, doc, getDoc } from 'firebase/firestore'; 
