@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, Users, Target, TrendingUp, Download, CheckCircle, 
-  XCircle, FileText, Activity, BookOpen, AlertCircle, UploadCloud, X, Lock, Crown, ArrowRight 
+  XCircle, FileText, Activity, BookOpen, AlertCircle, UploadCloud, X, Lock, Crown, ArrowRight, Briefcase, AlertTriangle, Sparkles, Search 
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { collection, query, where, onSnapshot, writeBatch, doc, getDoc } from 'firebase/firestore'; 
@@ -14,8 +14,14 @@ export default function PartnerDashboard() {
   const [isExporting, setIsExporting] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null); 
 
+  // --- QA BYPASS STATE ---
+  const [isTester, setIsTester] = useState(false);
+
   // --- MONETIZATION TIER ---
   const [partnerTier, setPartnerTier] = useState('free'); // 'free' or 'premium'
+  
+  // Calculate final premium status (Real Tier + QA Bypass)
+  const isPremium = partnerTier === 'premium' || isTester;
 
   // --- MODAL STATES ---
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -23,13 +29,19 @@ export default function PartnerDashboard() {
   const [csvFile, setCsvFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState({ text: '', type: '' });
+  
+  // --- TABLE FILTERS ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pass' | 'fail'
 
   const [stats, setStats] = useState({
     totalScans: 0,
     uniqueStudents: 0,
     avgMatchScore: 0,
     passRate: 0,
-    topGaps: []
+    topGaps: [],
+    atRiskCount: 0,
+    topRoles: []
   });
 
   useEffect(() => {
@@ -39,18 +51,28 @@ export default function PartnerDashboard() {
       return;
     }
 
-    // 1. Fetch the Partner's Tier Status
-    const fetchTier = async () => {
+    // 1. Fetch QA Status & Partner Tier
+    const checkAccessLevels = async () => {
       try {
+        // Check QA Bypass first
+        if (currentUser.email) {
+          const qaRef = doc(db, 'qa_accounts', currentUser.email.toLowerCase());
+          const qaSnap = await getDoc(qaRef);
+          if (qaSnap.exists() && qaSnap.data().active === true) {
+            setIsTester(true);
+          }
+        }
+
+        // Check actual Partner Tier
         const adminDoc = await getDoc(doc(db, 'admins', currentUser.email.toLowerCase()));
         if (adminDoc.exists()) {
           setPartnerTier(adminDoc.data().tier || 'free'); 
         }
       } catch (err) {
-        console.error("Tier fetch error:", err);
+        console.error("Access check error:", err);
       }
     };
-    fetchTier();
+    checkAccessLevels();
 
     // 2. Fetch the ATS Data
     const q = query(collection(db, 'ats_scans'), where('tenantId', '==', tenantId));
@@ -86,12 +108,27 @@ export default function PartnerDashboard() {
           .slice(0, 4)
           .map(([name, count]) => ({ name, percentage: Math.round((count / total) * 100) }));
 
+        const atRiskCount = scanData.filter(s => (s.roleMatchScore || s.score || 0) < 35).length;
+
+        const roleCounts = {};
+        scanData.forEach(scan => {
+          if (scan.targetRole) {
+            roleCounts[scan.targetRole] = (roleCounts[scan.targetRole] || 0) + 1;
+          }
+        });
+        const topRoles = Object.entries(roleCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([name, count]) => ({ name, count }));
+
         setStats({
           totalScans: total,
           uniqueStudents: uniqueEmails.size,
           avgMatchScore: Math.round(totalScore / total),
           passRate: Math.round((passedCount / total) * 100),
-          topGaps
+          topGaps,
+          atRiskCount,
+          topRoles
         });
       }
       setLoading(false);
@@ -198,9 +235,9 @@ export default function PartnerDashboard() {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider">
                 <Building2 size={14} /> Enterprise Partner Portal
               </div>
-              {partnerTier === 'premium' ? (
+              {isPremium ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold uppercase tracking-wider">
-                  <Crown size={14} className="text-indigo-400"/> Premium Active
+                  <Crown size={14} className="text-indigo-400"/> {isTester ? 'QA Bypass Active' : 'Premium Active'}
                 </div>
               ) : (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400 text-xs font-bold uppercase tracking-wider">
@@ -217,20 +254,20 @@ export default function PartnerDashboard() {
           <div className="flex items-center gap-3 flex-wrap">
             {/* ADD STUDENTS BUTTON (GATED) */}
             <button 
-              onClick={() => partnerTier === 'premium' ? setShowUploadModal(true) : setShowUpgradeModal(true)}
+              onClick={() => isPremium ? setShowUploadModal(true) : setShowUpgradeModal(true)}
               className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold transition-all shadow-lg flex items-center gap-2"
             >
-              {partnerTier === 'free' ? <Lock size={16} className="opacity-70" /> : <UploadCloud size={18} />}
+              {!isPremium ? <Lock size={16} className="opacity-70" /> : <UploadCloud size={18} />}
               Add Students
             </button>
 
             {/* EXPORT BUTTON (GATED) */}
             <button 
-              onClick={() => partnerTier === 'premium' ? handleExportCurriculumReport() : setShowUpgradeModal(true)}
+              onClick={() => isPremium ? handleExportCurriculumReport() : setShowUpgradeModal(true)}
               disabled={isExporting}
               className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-lg text-sm font-bold transition-all flex items-center gap-2"
             >
-              {isExporting ? <Activity size={18} className="animate-spin" /> : (partnerTier === 'free' ? <Lock size={16} className="opacity-70"/> : <Download size={18} />)}
+              {isExporting ? <Activity size={18} className="animate-spin" /> : (!isPremium ? <Lock size={16} className="opacity-70"/> : <Download size={18} />)}
               {isExporting ? 'Compiling Data...' : 'Export Report'}
             </button>
             <button onClick={() => auth.signOut()} className="px-4 py-2.5 bg-slate-800 hover:bg-rose-500/10 hover:text-rose-400 border border-slate-700 hover:border-rose-500/30 rounded-lg text-sm font-medium transition-all">
@@ -238,6 +275,27 @@ export default function PartnerDashboard() {
             </button>
           </div>
         </div>
+        
+        {/* PREMIUM UPGRADE BANNER (Free Tier Only) */}
+        {!isPremium && (
+          <div className="mb-8 p-6 bg-gradient-to-r from-indigo-600/20 via-purple-600/10 to-transparent border border-indigo-500/30 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-indigo-500/20 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                <Sparkles className="text-indigo-400" size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Scale your cohort with SkillNova Premium</h3>
+                <p className="text-sm text-slate-400">Unlock bulk student onboarding, deep curriculum gap analytics, and advanced placement tracking.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowUpgradeModal(true)}
+              className="px-6 py-2.5 bg-white text-indigo-900 font-extrabold rounded-xl hover:bg-slate-100 transition-all shadow-xl whitespace-nowrap"
+            >
+              Explore Premium
+            </button>
+          </div>
+        )}
 
         {/* METRICS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -252,27 +310,79 @@ export default function PartnerDashboard() {
           </div>
 
           {/* GATED METRIC: READINESS */}
-          <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center relative overflow-hidden group cursor-pointer" onClick={() => partnerTier==='free' && setShowUpgradeModal(true)}>
-            <div className={`transition-all duration-300 ${partnerTier === 'free' ? 'blur-sm opacity-40' : ''}`}>
+          <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center relative overflow-hidden group cursor-pointer" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+            <div className={`transition-all duration-300 ${!isPremium ? 'blur-sm opacity-40' : ''}`}>
               <p className="text-slate-400 text-sm font-medium mb-1">Avg. Readiness</p>
               <h4 className={`text-3xl font-bold ${getScoreColor(stats.avgMatchScore)}`}>{stats.avgMatchScore}%</h4>
             </div>
-            <div className={`p-3 rounded-xl border transition-all ${partnerTier === 'free' ? 'bg-slate-800 border-slate-700' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
-              <Target className={partnerTier === 'free' ? 'text-slate-500' : 'text-emerald-400'} size={22} />
+            <div className={`p-3 rounded-xl border transition-all ${!isPremium ? 'bg-slate-800 border-slate-700' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
+              <Target className={!isPremium ? 'text-slate-500' : 'text-emerald-400'} size={22} />
             </div>
-            {partnerTier === 'free' && <div className="absolute inset-0 flex items-center justify-center bg-[#1e293b]/40"><Lock className="text-indigo-400 group-hover:scale-110 transition-transform" size={24}/></div>}
+            {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-[#1e293b]/40"><Lock className="text-indigo-400 group-hover:scale-110 transition-transform" size={24}/></div>}
           </div>
 
           {/* GATED METRIC: PLACEMENT */}
-          <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center relative overflow-hidden group cursor-pointer" onClick={() => partnerTier==='free' && setShowUpgradeModal(true)}>
-            <div className={`transition-all duration-300 ${partnerTier === 'free' ? 'blur-sm opacity-40' : ''}`}>
+          <div className="bg-[#1e293b]/40 border border-slate-800 p-5 rounded-2xl flex justify-between items-center relative overflow-hidden group cursor-pointer" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+            <div className={`transition-all duration-300 ${!isPremium ? 'blur-sm opacity-40' : ''}`}>
               <p className="text-slate-400 text-sm font-medium mb-1">Placement Prob.</p>
               <h4 className="text-3xl font-bold text-white">{stats.passRate}%</h4>
             </div>
-            <div className={`p-3 rounded-xl border transition-all ${partnerTier === 'free' ? 'bg-slate-800 border-slate-700' : 'bg-indigo-500/10 border-indigo-500/20'}`}>
-              <TrendingUp className={partnerTier === 'free' ? 'text-slate-500' : 'text-indigo-400'} size={22} />
+            <div className={`p-3 rounded-xl border transition-all ${!isPremium ? 'bg-slate-800 border-slate-700' : 'bg-indigo-500/10 border-indigo-500/20'}`}>
+              <TrendingUp className={!isPremium ? 'text-slate-500' : 'text-indigo-400'} size={22} />
             </div>
-            {partnerTier === 'free' && <div className="absolute inset-0 flex items-center justify-center bg-[#1e293b]/40"><Lock className="text-indigo-400 group-hover:scale-110 transition-transform" size={24}/></div>}
+            {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-[#1e293b]/40"><Lock className="text-indigo-400 group-hover:scale-110 transition-transform" size={24}/></div>}
+          </div>
+        </div>
+
+        {/* EXTRA INSIGHTS CARDS (Top Roles & At-Risk) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group cursor-pointer" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+            <div className={`transition-all duration-300 ${!isPremium ? 'blur-sm opacity-40' : ''}`}>
+              <h3 className="text-md font-bold text-white mb-4 flex items-center gap-2"><Briefcase className="text-indigo-400" size={18} /> Top Targeted Roles</h3>
+              <div className="space-y-3">
+                {stats.topRoles.length > 0 ? stats.topRoles.map((role, idx) => (
+                  <div key={idx} className="flex justify-between items-center bg-slate-900/50 p-2 rounded-lg border border-slate-800">
+                    <span className="text-sm text-slate-300 truncate max-w-[70%]">{role.name}</span>
+                    <span className="text-xs font-bold text-indigo-400">{role.count} Students</span>
+                  </div>
+                )) : (
+                  <div className="text-slate-500 text-sm py-2">No role data available.</div>
+                )}
+              </div>
+            </div>
+            {!isPremium && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1e293b]/20">
+                <Lock className="text-indigo-400 mb-2" size={24} />
+                <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-tighter">Premium Insights Locked</span>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group cursor-pointer" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+            <div className={`transition-all duration-300 ${!isPremium ? 'blur-sm opacity-40' : ''}`}>
+              <h3 className="text-md font-bold text-white mb-4 flex items-center gap-2"><AlertTriangle className="text-rose-400" size={18} /> At-Risk Students</h3>
+              <div className="flex items-center gap-4">
+                <div className="text-4xl font-extrabold text-rose-500">{stats.atRiskCount}</div>
+                <div className="text-xs text-slate-400 leading-tight">Students scored below 35% and need immediate curriculum intervention.</div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center">
+                <span className="text-xs text-slate-500 italic">Target threshold: 35% Match Score</span>
+                {isPremium && (
+                  <button 
+                    onClick={() => setStatusFilter('fail')}
+                    className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-wider flex items-center gap-1"
+                  >
+                    View List <ArrowRight size={10} />
+                  </button>
+                )}
+              </div>
+            </div>
+            {!isPremium && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1e293b]/20">
+                <Lock className="text-indigo-400 mb-2" size={24} />
+                <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-tighter">Premium Gating Active</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -288,7 +398,7 @@ export default function PartnerDashboard() {
               <p className="text-xs text-slate-400 mb-6 relative z-10">Technologies your students are consistently missing based on current market demands.</p>
               
               {/* THE PAYWALL BLUR */}
-              <div className={`space-y-5 relative z-10 flex-grow transition-all duration-500 ${partnerTier === 'free' ? 'blur-[6px] opacity-30 select-none pointer-events-none' : ''}`}>
+              <div className={`space-y-5 relative z-10 flex-grow transition-all duration-500 ${!isPremium ? 'blur-[6px] opacity-30 select-none pointer-events-none' : ''}`}>
                 {stats.topGaps.length > 0 ? stats.topGaps.map((gap, index) => (
                   <div key={index}>
                     <div className="flex justify-between text-sm mb-2"><span className="font-bold text-rose-300">{gap.name}</span><span className="text-slate-400">{gap.percentage}% of students miss this</span></div>
@@ -299,7 +409,7 @@ export default function PartnerDashboard() {
                 )}
                 
                 {/* Dummy data for the blur effect if empty */}
-                {partnerTier === 'free' && stats.topGaps.length === 0 && (
+                {!isPremium && stats.topGaps.length === 0 && (
                    <>
                      <div><div className="flex justify-between text-sm mb-2"><span className="font-bold text-rose-300">React.js</span></div><div className="w-full bg-slate-800 rounded-full h-2"><div className="bg-rose-500 h-2 rounded-full w-[80%]"></div></div></div>
                      <div><div className="flex justify-between text-sm mb-2"><span className="font-bold text-rose-300">Docker</span></div><div className="w-full bg-slate-800 rounded-full h-2"><div className="bg-orange-500 h-2 rounded-full w-[60%]"></div></div></div>
@@ -309,7 +419,7 @@ export default function PartnerDashboard() {
               </div>
 
               {/* PAYWALL OVERLAY */}
-              {partnerTier === 'free' && (
+              {!isPremium && (
                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0f172a]/40 backdrop-blur-[2px] rounded-2xl border border-indigo-500/20 p-6 text-center">
                   <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
                     <Lock className="text-indigo-400 w-8 h-8" />
@@ -327,44 +437,91 @@ export default function PartnerDashboard() {
 
           {/* RIGHT PANEL: STUDENT ROSTER (Always available, but standard view) */}
           <div className="xl:col-span-2 bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl flex flex-col">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
               <h3 className="text-xl font-bold text-white flex items-center gap-2"><Users className="text-blue-400" /> Cohort Feed</h3>
-              <span className="text-xs text-slate-500 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">Basic View</span>
+              
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="relative flex-grow md:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="Search students..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-2 pl-9 pr-4 text-sm text-white outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-slate-900/50 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-300 outline-none focus:border-indigo-500 transition-colors"
+                >
+                  <option value="all">All Status</option>
+                  <option value="pass">Pass Only</option>
+                  <option value="fail">Fail Only</option>
+                </select>
+              </div>
             </div>
             
             <div className="overflow-x-auto overflow-y-auto max-h-[600px] pr-2 custom-scrollbar">
               <table className="w-full text-left table-fixed border-separate border-spacing-0 relative">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-slate-800/90 backdrop-blur-md text-slate-300 text-[11px] uppercase tracking-wider shadow-sm">
-                    <th className="py-4 pl-4 font-bold w-[35%] rounded-tl-lg border-b border-slate-700">Student Email</th>
-                    <th className="py-4 pr-2 font-bold w-[30%] border-b border-slate-700">Target Role</th>
-                    <th className="py-4 pr-4 font-bold w-[35%] rounded-tr-lg border-b border-slate-700">Recent Status</th>
+                    <th className="py-4 pl-4 font-bold w-[30%] rounded-tl-lg border-b border-slate-700">Student Email</th>
+                    <th className="py-4 pr-2 font-bold w-[25%] border-b border-slate-700">Target Role</th>
+                    {isPremium && (
+                      <>
+                        <th className="py-4 pr-2 font-bold w-[12%] border-b border-slate-700">Match %</th>
+                        <th className="py-4 pr-2 font-bold w-[12%] border-b border-slate-700">ATS %</th>
+                      </>
+                    )}
+                    <th className="py-4 pr-4 font-bold w-[21%] rounded-tr-lg border-b border-slate-700">Recent Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {scans.map((scan) => {
-                    const score = scan.roleMatchScore || scan.score || 0;
-                    return (
-                      <tr key={scan.id} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="py-4 pl-4 pr-2 border-b border-slate-800/50">
-                          <div className="font-medium text-slate-200 truncate">{scan.userEmail}</div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">{scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleDateString() : 'Just now'}</div>
-                        </td>
-                        <td className="py-4 pr-2 border-b border-slate-800/50">
-                          <span className="text-sm text-indigo-300 font-medium truncate block">{scan.targetRole || "Unknown Role"}</span>
-                        </td>
-                        <td className="py-4 pr-4 border-b border-slate-800/50">
-                          {score >= 60 ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md"><CheckCircle size={14} /> Pass</span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md"><AlertCircle size={14} /> Fail</span>
+                  {scans
+                    .filter(scan => {
+                      const matchesSearch = scan.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                            scan.targetRole?.toLowerCase().includes(searchTerm.toLowerCase());
+                      const score = scan.roleMatchScore || scan.score || 0;
+                      const matchesStatus = statusFilter === 'all' || 
+                                            (statusFilter === 'pass' && score >= 60) || 
+                                            (statusFilter === 'fail' && score < 60);
+                      return matchesSearch && matchesStatus;
+                    })
+                    .map((scan) => {
+                      const score = scan.roleMatchScore || scan.score || 0;
+                      return (
+                        <tr key={scan.id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="py-4 pl-4 pr-2 border-b border-slate-800/50">
+                            <div className="font-medium text-slate-200 truncate">{scan.userEmail}</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">{scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleDateString() : 'Just now'}</div>
+                          </td>
+                          <td className="py-4 pr-2 border-b border-slate-800/50">
+                            <span className="text-sm text-indigo-300 font-medium truncate block">{scan.targetRole || "Unknown Role"}</span>
+                          </td>
+                          {isPremium && (
+                            <>
+                              <td className={`py-4 pr-2 border-b border-slate-800/50 text-sm font-bold ${getScoreColor(score)}`}>
+                                {score}%
+                              </td>
+                              <td className={`py-4 pr-2 border-b border-slate-800/50 text-sm font-bold ${getScoreColor(scan.atsFormatScore || 0)}`}>
+                                {scan.atsFormatScore || 0}%
+                              </td>
+                            </>
                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          <td className="py-4 pr-4 border-b border-slate-800/50">
+                            {score >= 60 ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md"><CheckCircle size={14} /> Pass</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md"><AlertCircle size={14} /> Fail</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   {scans.length === 0 && (
-                    <tr><td colSpan="3" className="py-8 text-center text-slate-500 border-b border-slate-800/50">No students in this cohort have run scans yet.</td></tr>
+                    <tr><td colSpan={isPremium ? 5 : 3} className="py-8 text-center text-slate-500 border-b border-slate-800/50">No students in this cohort have run scans yet.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -404,7 +561,7 @@ export default function PartnerDashboard() {
       )}
 
       {/* --- CSV UPLOAD MODAL (Only shows if Premium) --- */}
-      {showUploadModal && partnerTier === 'premium' && (
+      {showUploadModal && isPremium && (
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
          <div className="bg-[#1e293b] border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
            <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
