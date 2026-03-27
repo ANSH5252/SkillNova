@@ -16,7 +16,7 @@ export default function Login() {
   const intendedPath = location.state?.intendedPath || '';
 
   // --- UI STATES ---
-  const [activeTab, setActiveTab] = useState((intendedPath === '/admin' || intendedPath === '/partner') ? 'partner' : 'student');
+  const [activeTab, setActiveTab] = useState((intendedPath === '/admin' || intendedPath === '/partner' || intendedPath === '/employer') ? 'partner' : 'student');
   const [isStudentSignUp, setIsStudentSignUp] = useState(false);
   
   // --- FORM STATES ---
@@ -37,10 +37,14 @@ export default function Login() {
       
       if (adminDocSnap.exists()) {
         const adminData = adminDocSnap.data();
+        
+        // Dynamic Routing based on exact role
         if (adminData.role === 'superadmin') {
           navigate('/admin'); 
+        } else if (adminData.role === 'employer') {
+          navigate('/employer'); 
         } else {
-          navigate('/partner');
+          navigate('/partner'); // University Partner fallback
         }
       } else {
         navigate('/student'); // Standard student fallback
@@ -190,10 +194,10 @@ export default function Login() {
             {activeTab === 'partner' ? <Building2 className="text-emerald-400 w-8 h-8" /> : <LogIn className="text-indigo-400 w-8 h-8" />}
           </div>
           <h2 className="text-3xl font-extrabold text-white mb-2 tracking-tight">
-            {activeTab === 'partner' ? 'Partner Portal' : 'Student Access'}
+            {activeTab === 'partner' ? 'Enterprise Portal' : 'Student Access'}
           </h2>
           <p className="text-slate-400 text-sm">
-            {activeTab === 'partner' ? 'Log in to manage your enterprise cohort.' : 'Log in to run your ATS resume simulations.'}
+            {activeTab === 'partner' ? 'Log in to manage cohorts or discover talent.' : 'Log in to run your ATS resume simulations.'}
           </p>
         </div>
 
@@ -238,7 +242,7 @@ export default function Login() {
                       <input 
                         type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)}
                         className="w-full bg-slate-900/50 border border-slate-700 focus:border-emerald-500 rounded-xl py-3.5 pl-11 pr-4 text-white outline-none transition-colors"
-                        placeholder="dean@university.edu"
+                        placeholder="admin@company.com"
                       />
                     </div>
                   </div>
@@ -325,7 +329,7 @@ export default function Login() {
 
         </div>
 
-        {/* SUBTLE SWITCHER (In case they clicked the wrong button on the home page) */}
+        {/* SUBTLE SWITCHER */}
         <div className="text-center mt-6">
           <button 
             onClick={() => {
