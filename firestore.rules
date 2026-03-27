@@ -46,8 +46,16 @@ service cloud.firestore {
     // --- ENTERPRISE APPLICATIONS ---
     match /partner_applications/{appId} {
       allow create: if true; 
-      allow read: if true; // <-- CHANGED: Allows the Login page to check status
+      allow read: if true; // Allows the Login page to check status
       allow update, delete: if request.auth != null && isSuperAdmin();
     }    
+
+    // --- QA ACCOUNTS (DEVELOPER BYPASS) ---
+    match /qa_accounts/{accountId} {
+      // Anyone logged in can check if their own email exists on the VIP list
+      allow read: if request.auth != null;
+      // CRITICAL: Nobody can add/remove themselves from the app. Must be done via Firebase Console.
+      allow write: if false; 
+    }
   } 
-} 
+}
