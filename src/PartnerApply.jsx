@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Mail, User, ShieldCheck, ArrowRight, CheckCircle } from 'lucide-react';
+import { Building2, Mail, User, ShieldCheck, ArrowRight, CheckCircle, Activity } from 'lucide-react';
 import { db } from './firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
@@ -35,25 +35,35 @@ export default function PartnerApply() {
   if (status === 'success') {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-[#1e293b]/80 border border-emerald-500/30 p-8 rounded-3xl text-center shadow-2xl shadow-emerald-500/10">
-          <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="max-w-md w-full bg-[#1e293b]/80 border border-emerald-500/30 p-8 rounded-3xl text-center shadow-2xl shadow-emerald-500/10 animate-fade-in-up">
+          <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
             <CheckCircle className="text-emerald-400 w-10 h-10" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Application Under Review</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">Application Submitted!</h2>
           <p className="text-slate-400 mb-6 leading-relaxed">
-            Thank you for your interest in SkillNova Enterprise. Our team is reviewing your application for <strong>{formData.universityName}</strong>.
+            Thank you for choosing SkillNova. Your enterprise application for <strong>{formData.universityName}</strong> has been securely received.
           </p>
-          <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-xl mb-8 text-left">
-            <h4 className="text-indigo-300 font-bold text-sm mb-2 flex items-center gap-2">
-              <Activity size={16} /> Next Steps
+          
+          <div className="bg-indigo-500/10 border border-indigo-500/20 p-6 rounded-xl mb-8 text-left">
+            <h4 className="text-indigo-300 font-bold text-sm mb-3 flex items-center gap-2">
+              <Activity size={18} /> Onboarding Timeline
             </h4>
-            <ul className="text-xs text-indigo-200/70 space-y-2">
-              <li>1. Standard enterprise review takes approx. <strong>24 hours</strong>.</li>
-              <li>2. Once 24 hours have passed, return to our Login portal.</li>
-              <li>3. Enter <strong>{formData.email}</strong> to check your approval status and activate your dashboard.</li>
+            <p className="text-sm text-indigo-200/90 leading-relaxed mb-4">
+              Our security team manually verifies all enterprise partners to ensure platform integrity. <strong>It will take a maximum of 24 hours to review your details and get your institution fully onboarded.</strong>
+            </p>
+            <ul className="text-xs text-indigo-300/60 space-y-3 mt-4 pt-4 border-t border-indigo-500/20">
+              <li className="flex items-start gap-2">
+                <ArrowRight size={14} className="mt-0.5 flex-shrink-0"/> 
+                <span>You will receive an official approval notification at <strong>{formData.email}</strong>.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <ArrowRight size={14} className="mt-0.5 flex-shrink-0"/> 
+                <span>Follow the secure instructions in the email to set your password and activate your dashboard.</span>
+              </li>
             </ul>
           </div>
-          <Link to="/" className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-all inline-block w-full">
+          
+          <Link to="/" className="px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all inline-block w-full shadow-lg">
             Return to Home
           </Link>
         </div>
