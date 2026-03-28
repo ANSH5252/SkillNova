@@ -8,7 +8,7 @@ import EmployerDashboard from './EmployerDashboard'; // <-- NEW IMPORT
 import StudentDashboard from './StudentDashboard';
 import PartnerApply from './PartnerApply';
 import Login from './Login';
-import { Target, ShieldAlert, Building2, Activity, Zap } from 'lucide-react';
+import { Target, ShieldAlert, Building2, Activity, Zap, Briefcase } from 'lucide-react';
 
 // --- CUSTOM SVG LOGO COMPONENT ---
 const SkillNovaLogo = ({ className = "w-10 h-10" }) => (
@@ -128,13 +128,23 @@ function LandingPage() {
           </p>
           
           {/* FIXED AND RESIZED HERO BUTTONS */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up delay-hero-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up delay-hero-4 flex-wrap">
+            
+            {/* Student Button */}
             <Link to="/login" state={{ intendedPath: '/student' }} className="w-full sm:w-auto px-6 py-3.5 bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xl shadow-white/10">
               <Zap size={18} /> Run Your Free Scan
             </Link>
+
+            {/* University Button */}
             <Link to="/login" state={{ intendedPath: '/partner' }} className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2">
-              <Building2 size={18} /> Enterprise Portal
+              <Building2 size={18} /> For Universities
             </Link>
+
+            {/* NEW: Employer / Corporate Button */}
+            <Link to="/employer" className="w-full sm:w-auto px-6 py-3.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.1)]">
+              <Briefcase size={18} /> Hire Talent
+            </Link>
+            
           </div>
         </div>
       </div>
@@ -206,12 +216,8 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* B2B EMPLOYER ROUTE (Companies) */}
-          <Route path="/employer" element={
-            <ProtectedRoute requireAdmin={true}>
-              <EmployerDashboard />
-            </ProtectedRoute>
-          } />
+          {/* TEMPORARY UNPROTECTED B2B EMPLOYER ROUTE */}
+          <Route path="/employer" element={<EmployerDashboard />} />
           
           {/* STUDENT ROUTE */}
           <Route path="/student" element={
