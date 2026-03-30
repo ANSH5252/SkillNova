@@ -8,7 +8,20 @@ import {
 } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, ShieldCheck, Clock, XCircle, Activity, Building2, LogIn, Eye, EyeOff } from 'lucide-react';
+import { 
+  Mail, 
+  Lock, 
+  ArrowRight, 
+  ShieldCheck, 
+  Clock, 
+  XCircle, 
+  Activity, 
+  Building2, 
+  LogIn, 
+  Eye, 
+  EyeOff, 
+  Briefcase 
+} from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,15 +29,17 @@ export default function Login() {
   const intendedPath = location.state?.intendedPath || '';
 
   // --- UI STATES ---
-  const [activeTab, setActiveTab] = useState((intendedPath === '/admin' || intendedPath === '/partner' || intendedPath === '/employer') ? 'partner' : 'student');
-  const [isStudentSignUp, setIsStudentSignUp] = useState(false);
+  const [activeTab, setActiveTab] = useState(() => {
+    if (intendedPath === '/employer') return 'employer';
+    if (intendedPath === '/admin' || intendedPath === '/partner') return 'partner';
+    return 'student';
+  });
   
-  // --- FORM STATES ---
+  const [isStudentSignUp, setIsStudentSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [partnerStep, setPartnerStep] = useState(1); // 1: Email Check, 2: Password
-  const [partnerStatus, setPartnerStatus] = useState(null); // 'pending' | 'rejected' | null
-  
+  const [partnerStep, setPartnerStep] = useState(1); 
+  const [partnerStatus, setPartnerStatus] = useState(null); 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -38,24 +53,23 @@ export default function Login() {
       if (adminDocSnap.exists()) {
         const adminData = adminDocSnap.data();
         
-        // Dynamic Routing based on exact role
         if (adminData.role === 'superadmin') {
           navigate('/admin'); 
         } else if (adminData.role === 'employer') {
           navigate('/employer'); 
         } else {
-          navigate('/partner'); // University Partner fallback
+          navigate('/partner'); 
         }
       } else {
-        navigate('/student'); // Standard student fallback
+        navigate('/student'); 
       }
     } catch (error) {
-      console.error("Error checking admin status:", error);
+      console.error("Routing Error:", error);
       navigate('/student'); 
     }
   };
 
-  // --- GOOGLE AUTH ---
+  // --- AUTH HANDLERS ---
   const handleGoogleSignIn = async () => {
     setErrorMsg('');
     setLoading(true);
@@ -70,7 +84,6 @@ export default function Login() {
     }
   };
 
-  // --- STUDENT SUBMIT ---
   const handleStudentSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -90,14 +103,12 @@ export default function Login() {
     }
   };
 
-  // --- PARTNER: STEP 1 (Check Email) ---
   const handlePartnerEmailCheck = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setLoading(true);
 
     try {
-      // 1. Check if already an admin in firestore
       const adminDoc = await getDoc(doc(db, 'admins', email.toLowerCase()));
       if (adminDoc.exists()) {
         setPartnerStep(2);
@@ -105,7 +116,6 @@ export default function Login() {
         return;
       }
 
-      // 2. Check if pending/rejected application
       const q = query(collection(db, 'partner_applications'), where('email', '==', email.toLowerCase()));
       const snap = await getDocs(q);
       
@@ -115,56 +125,43 @@ export default function Login() {
         else if (appStatus === 'rejected') setPartnerStatus('rejected');
         else setPartnerStep(2); 
       } else {
-        // 3. Not found anywhere. Failsafe to password step to obscure existence
-        setPartnerStep(2);
+        setPartnerStep(2); 
       }
     } catch (error) {
-      console.error(error);
       setPartnerStep(2); 
     } finally {
       setLoading(false);
     }
   };
 
-  // --- PARTNER: STEP 2 (Final Login & Seamless Auth Hand-off) ---
   const handlePartnerFinalSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
     try {
-      // Attempt 1: Try to log them in normally
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       await checkAdminAndRoute(userCredential.user.email);
     } catch (error) {
-      // THE FIX: If they fail because they don't have an Auth account yet, we seamlessly create it!
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-         try {
-           // Create the account using the password they just typed
-           const newUser = await createUserWithEmailAndPassword(auth, email, password);
-           await checkAdminAndRoute(newUser.user.email);
-         } catch (createError) {
-           if (createError.code === 'auth/email-already-in-use') {
-             // If they actually DO exist but typed the wrong password, show a normal error.
-             setErrorMsg("Incorrect password. Please try again.");
-           } else {
-             setErrorMsg(createError.message.replace('Firebase: ', ''));
-           }
-         }
+          try {
+            const newUser = await createUserWithEmailAndPassword(auth, email, password);
+            await checkAdminAndRoute(newUser.user.email);
+          } catch (createError) {
+            setErrorMsg(createError.code === 'auth/email-already-in-use' ? "Incorrect password." : "Access Denied.");
+          }
       } else {
-         setErrorMsg("Invalid credentials. Enterprise accounts must be pre-approved.");
+          setErrorMsg("Invalid credentials. Accounts must be pre-approved.");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // --- SHARED UI COMPONENTS ---
+  // --- SHARED UI ---
   const GoogleButton = () => (
     <button 
-      type="button"
-      onClick={handleGoogleSignIn}
-      disabled={loading}
-      className="w-full bg-white hover:bg-slate-50 text-slate-800 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm disabled:opacity-50 mt-4"
+      type="button" onClick={handleGoogleSignIn} disabled={loading}
+      className="w-full bg-white hover:bg-slate-50 text-slate-800 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm mt-4 disabled:opacity-50"
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -177,9 +174,9 @@ export default function Login() {
   );
 
   const Divider = () => (
-    <div className="flex items-center gap-4 my-5">
+    <div className="flex items-center gap-4 my-5 text-slate-500 uppercase text-[10px] font-bold tracking-widest">
       <div className="flex-1 h-px bg-slate-700/50"></div>
-      <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Or</span>
+      Or
       <div className="flex-1 h-px bg-slate-700/50"></div>
     </div>
   );
@@ -188,35 +185,43 @@ export default function Login() {
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 selection:bg-indigo-500/30">
       <div className="w-full max-w-[420px]">
         
-        {/* DYNAMIC LOGO HEADER */}
+        {/* HEADER SECTION */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl border mb-6 shadow-2xl transition-colors duration-500 ${activeTab === 'partner' ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' : 'bg-indigo-500/10 border-indigo-500/20 shadow-indigo-500/10'}`}>
-            {activeTab === 'partner' ? <Building2 className="text-emerald-400 w-8 h-8" /> : <LogIn className="text-indigo-400 w-8 h-8" />}
+          <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl border mb-6 shadow-2xl transition-all duration-500 
+            ${activeTab === 'partner' ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' : 
+              activeTab === 'employer' ? 'bg-amber-500/10 border-amber-500/20 shadow-amber-500/10' : 
+              'bg-indigo-500/10 border-indigo-500/20 shadow-indigo-500/10'}`}>
+            {activeTab === 'partner' && <Building2 className="text-emerald-400 w-8 h-8" />}
+            {activeTab === 'employer' && <Briefcase className="text-amber-400 w-8 h-8" />}
+            {activeTab === 'student' && <LogIn className="text-indigo-400 w-8 h-8" />}
           </div>
           <h2 className="text-3xl font-extrabold text-white mb-2 tracking-tight">
-            {activeTab === 'partner' ? 'Enterprise Portal' : 'Student Access'}
+            {activeTab === 'partner' ? 'Enterprise Portal' : 
+             activeTab === 'employer' ? 'Talent Discovery Hub' : 
+             'Student Access'}
           </h2>
           <p className="text-slate-400 text-sm">
-            {activeTab === 'partner' ? 'Log in to manage cohorts or discover talent.' : 'Log in to run your ATS resume simulations.'}
+            {activeTab === 'partner' ? 'Log in to manage your university partnership.' : 
+             activeTab === 'employer' ? 'Log in to find pre-vetted, high-match candidates.' : 
+             'Log in to run your ATS resume simulations.'}
           </p>
         </div>
 
         {/* MAIN CARD */}
         <div className="bg-[#1e293b]/80 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
           
-          {/* ERROR DISPLAY */}
           {errorMsg && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-bold mb-6 text-center animate-fade-in">
+            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-bold mb-6 text-center">
               {errorMsg}
             </div>
           )}
 
-          {/* --- PARTNER STATUS SCREENS --- */}
+          {/* STATUS SCREENS */}
           {partnerStatus === 'pending' && (
             <div className="text-center animate-fade-in">
               <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4"><Clock className="text-amber-400 w-8 h-8" /></div>
               <h3 className="text-xl font-bold text-white mb-2">Review in Progress</h3>
-              <p className="text-sm text-slate-400 mb-6">Your Enterprise application for <strong className="text-slate-200">{email}</strong> is under review. Standard review times are 24 hours.</p>
+              <p className="text-sm text-slate-400 mb-6">Your application for <strong className="text-slate-200">{email}</strong> is under review.</p>
               <button onClick={() => {setPartnerStatus(null); setPartnerStep(1); setEmail('');}} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-xl">Use a different account</button>
             </div>
           )}
@@ -225,28 +230,35 @@ export default function Login() {
             <div className="text-center animate-fade-in">
               <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4"><XCircle className="text-rose-400 w-8 h-8" /></div>
               <h3 className="text-xl font-bold text-white mb-2">Access Declined</h3>
-              <p className="text-sm text-slate-400 mb-6">Unfortunately, your application for Enterprise access could not be verified at this time.</p>
+              <p className="text-sm text-slate-400 mb-6">Your application for access could not be verified at this time.</p>
               <button onClick={() => {setPartnerStatus(null); setPartnerStep(1); setEmail('');}} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-xl">Return to Login</button>
             </div>
           )}
 
-          {/* --- ENTERPRISE FLOW --- */}
-          {activeTab === 'partner' && partnerStatus === null && (
+          {/* HUB / ENTERPRISE LOGIN FLOW */}
+          {(activeTab === 'partner' || activeTab === 'employer') && partnerStatus === null && (
             <div className="animate-fade-in">
               {partnerStep === 1 ? (
                 <form onSubmit={handlePartnerEmailCheck}>
                   <div>
-                    <label className="block text-slate-400 text-xs font-bold mb-2 uppercase tracking-wider">Institutional Email</label>
+                    <label className="block text-slate-400 text-xs font-bold mb-2 uppercase tracking-wider">
+                        {activeTab === 'employer' ? 'Work Email Address' : 'Institutional Email'}
+                    </label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                       <input 
                         type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-slate-900/50 border border-slate-700 focus:border-emerald-500 rounded-xl py-3.5 pl-11 pr-4 text-white outline-none transition-colors"
-                        placeholder="admin@company.com"
+                        className={`w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3.5 pl-11 pr-4 text-white outline-none transition-colors 
+                          ${activeTab === 'employer' ? 'focus:border-amber-500' : 'focus:border-emerald-500'}`}
+                        placeholder={activeTab === 'employer' ? "hr@company.com" : "admin@university.edu"}
                       />
                     </div>
                   </div>
-                  <button type="submit" disabled={loading || !email} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 disabled:opacity-50 mt-5">
+                  <button 
+                    type="submit" disabled={loading || !email} 
+                    className={`w-full text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg mt-5 transition-all 
+                      ${activeTab === 'employer' ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/25' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25'}`}
+                  >
                     {loading ? <Activity size={18} className="animate-spin" /> : <>Continue <ArrowRight size={18} /></>}
                   </button>
                   <Divider />
@@ -256,7 +268,7 @@ export default function Login() {
                 <form onSubmit={handlePartnerFinalSubmit} className="animate-fade-in">
                   <div className="flex items-center justify-between bg-slate-900/50 border border-slate-700 p-3 rounded-xl mb-6">
                     <span className="text-sm text-slate-300 truncate max-w-[200px]">{email}</span>
-                    <button type="button" onClick={() => setPartnerStep(1)} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">Edit</button>
+                    <button type="button" onClick={() => setPartnerStep(1)} className={`text-xs font-bold transition-colors ${activeTab === 'employer' ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300'}`}>Edit</button>
                   </div>
                   <div>
                     <label className="block text-slate-400 text-xs font-bold mb-2 uppercase tracking-wider">Password</label>
@@ -264,14 +276,20 @@ export default function Login() {
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                       <input 
                         type={showPassword ? 'text' : 'password'} required autoFocus value={password} onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-slate-900/50 border border-slate-700 focus:border-emerald-500 rounded-xl py-3.5 pl-11 pr-11 text-white outline-none transition-colors" placeholder="••••••••"
+                        className={`w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3.5 pl-11 pr-11 text-white outline-none transition-colors 
+                          ${activeTab === 'employer' ? 'focus:border-amber-500' : 'focus:border-emerald-500'}`} 
+                        placeholder="••••••••"
                       />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
                   </div>
-                  <button type="submit" disabled={loading || !password} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center mt-5 shadow-lg shadow-emerald-500/25 disabled:opacity-50">
+                  <button 
+                    type="submit" disabled={loading || !password} 
+                    className={`w-full text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center mt-5 shadow-lg transition-all 
+                      ${activeTab === 'employer' ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/25' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25'}`}
+                  >
                     {loading ? <Activity size={18} className="animate-spin" /> : <><ShieldCheck size={18} className="mr-2"/> Secure Login</>}
                   </button>
                   <Divider />
@@ -281,7 +299,7 @@ export default function Login() {
             </div>
           )}
 
-          {/* --- STUDENT FLOW --- */}
+          {/* STUDENT LOGIN FLOW */}
           {activeTab === 'student' && (
             <div className="animate-fade-in">
               <form onSubmit={handleStudentSubmit} className="space-y-5">
@@ -291,7 +309,8 @@ export default function Login() {
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                     <input 
                       type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-slate-900/50 border border-slate-700 focus:border-indigo-500 rounded-xl py-3.5 pl-11 pr-4 text-white outline-none transition-colors" placeholder="name@email.com"
+                      className="w-full bg-slate-900/50 border border-slate-700 focus:border-indigo-500 rounded-xl py-3.5 pl-11 pr-4 text-white outline-none transition-colors" 
+                      placeholder="name@email.com"
                     />
                   </div>
                 </div>
@@ -301,7 +320,8 @@ export default function Login() {
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                     <input 
                       type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-slate-900/50 border border-slate-700 focus:border-indigo-500 rounded-xl py-3.5 pl-11 pr-11 text-white outline-none transition-colors" placeholder="••••••••"
+                      className="w-full bg-slate-900/50 border border-slate-700 focus:border-indigo-500 rounded-xl py-3.5 pl-11 pr-11 text-white outline-none transition-colors" 
+                      placeholder="••••••••"
                     />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -312,34 +332,39 @@ export default function Login() {
                   {loading ? <Activity size={18} className="animate-spin" /> : (isStudentSignUp ? 'Create Free Account' : 'Sign In')}
                 </button>
               </form>
-
               <Divider />
               <GoogleButton />
-
               <div className="text-center mt-6">
-                <span className="text-slate-500 text-sm">
-                  {isStudentSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-                </span>
+                <span className="text-slate-500 text-sm">{isStudentSignUp ? 'Already have an account?' : "Don't have an account?"} </span>
                 <button onClick={() => setIsStudentSignUp(!isStudentSignUp)} className="text-indigo-400 font-bold hover:text-indigo-300 transition-colors">
                   {isStudentSignUp ? 'Sign In' : 'Sign Up'}
                 </button>
               </div>
             </div>
           )}
-
         </div>
 
-        {/* SUBTLE SWITCHER */}
-        <div className="text-center mt-6">
+        {/* --- THREE-WAY SWITCHER MENU --- */}
+        <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mt-8">
           <button 
-            onClick={() => {
-              setActiveTab(activeTab === 'student' ? 'partner' : 'student');
-              setErrorMsg('');
-              setPartnerStep(1);
-            }} 
-            className="text-slate-500 hover:text-slate-300 text-xs font-medium transition-colors"
+            onClick={() => { setActiveTab('student'); setErrorMsg(''); setPartnerStep(1); }} 
+            className={`text-xs font-bold transition-all px-2 py-1 rounded-md ${activeTab === 'student' ? 'text-indigo-400 bg-indigo-400/10 underline underline-offset-4' : 'text-slate-500 hover:text-slate-300'}`}
           >
-            {activeTab === 'student' ? 'Are you an Enterprise Partner? Login here.' : 'Are you a Student? Login here.'}
+            Student
+          </button>
+          <span className="text-slate-800 text-lg">·</span>
+          <button 
+            onClick={() => { setActiveTab('partner'); setErrorMsg(''); setPartnerStep(1); }} 
+            className={`text-xs font-bold transition-all px-2 py-1 rounded-md ${activeTab === 'partner' ? 'text-emerald-400 bg-emerald-400/10 underline underline-offset-4' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            University
+          </button>
+          <span className="text-slate-800 text-lg">·</span>
+          <button 
+            onClick={() => { setActiveTab('employer'); setErrorMsg(''); setPartnerStep(1); }} 
+            className={`text-xs font-bold transition-all px-2 py-1 rounded-md ${activeTab === 'employer' ? 'text-amber-400 bg-amber-400/10 underline underline-offset-4' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            Talent Hub
           </button>
         </div>
 
