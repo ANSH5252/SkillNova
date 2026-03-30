@@ -7,7 +7,6 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'superadmin';
     }
 
-    // NEW: Helper function to check if the user is an employer
     function isEmployer() {
       return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'employer';
     }
@@ -16,13 +15,20 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.tenantId;
     }
 
+    // --- STUDENT PROFILES (Employer Network) ---
+    match /student_profiles/{emailId} {
+      allow read: if request.auth != null; 
+      // FIX: Changed .toLowerCase() to .lower() for Firebase syntax
+      allow write: if request.auth.token.email != null && request.auth.token.email.lower() == emailId;
+    }
+
     // --- ATS SCANS COLLECTION ---
     match /ats_scans/{scanId} {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow read: if request.auth != null && (
         resource.data.userId == request.auth.uid ||
         isSuperAdmin() ||
-        isEmployer() || // NEW: Allow employers to read all scans
+        isEmployer() || // Allow employers to read all scans
         (getAdminTenantId() == resource.data.tenantId)
       );
       allow update, delete: if isSuperAdmin();
