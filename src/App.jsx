@@ -7,7 +7,7 @@ import PartnerDashboard from './PartnerDashboard';
 import StudentDashboard from './StudentDashboard';
 import PartnerApply from './PartnerApply';
 import Login from './Login';
-import { Target, ShieldAlert, Building2, Activity, Zap } from 'lucide-react';
+import { Target, ShieldAlert, Building2, Activity, Zap, Sparkles, TrendingUp, FileText, CheckCircle, Rocket, Heart, Cpu } from 'lucide-react';
 
 // --- CUSTOM SVG LOGO COMPONENT ---
 const SkillNovaLogo = ({ className = "w-10 h-10" }) => (
@@ -68,7 +68,7 @@ function LandingPage() {
             opacity: 0;
           }
 
-          /* Exact Timings to match the star landing */
+                    /* Exact Timings to match the star landing */
           .delay-nav { animation-delay: 1400ms; }
           .delay-hero-1 { animation-delay: 1500ms; }
           .delay-hero-2 { animation-delay: 1600ms; }
@@ -77,6 +77,9 @@ function LandingPage() {
           .delay-cards-1 { animation-delay: 2000ms; }
           .delay-cards-2 { animation-delay: 2150ms; }
           .delay-cards-3 { animation-delay: 2300ms; }
+          .delay-cards-4 { animation-delay: 2450ms; }
+          .delay-cards-5 { animation-delay: 2600ms; }
+          .delay-cards-6 { animation-delay: 2750ms; }
         `}
       </style>
 
@@ -116,14 +119,14 @@ function LandingPage() {
           </div>
           
           <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 tracking-tight animate-fade-in-up delay-hero-2">
-            The Ultimate <br className="hidden md:block" />
+            The Intelligent <br className="hidden md:block" />
             <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              ATS Rejection Simulator.
+              Career Readiness Platform.
             </span>
           </h1>
           
           <p className="text-slate-400 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed animate-fade-in-up delay-hero-3">
-            Stop guessing why your resume was rejected. SkillNova's local PDF parser and ruthless AI scoring engine shows you exactly what enterprise hiring software sees.
+            More than just a simulator. SkillNova v3.0 combines AI-driven resume forensics with enterprise-grade cohort intelligence to gap-fill your career roadmap.
           </p>
           
           {/* FIXED AND RESIZED HERO BUTTONS */}
@@ -178,6 +181,102 @@ function LandingPage() {
         </div>
       </div>
 
+      {/* INNOVATION HUB - WHAT'S NEW SECTION */}
+      <div className="max-w-6xl mx-auto px-6 py-24 relative">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-24 bg-gradient-to-b from-slate-800 to-transparent"></div>
+        
+        <div className="text-center mb-16 animate-fade-in-up delay-cards-1">
+          <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">Innovation Hub v3.0</h2>
+          <p className="text-slate-400 max-w-2xl mx-auto text-lg">We've added powerful AI-driven tools to transform how students apply and how universities track placement success.</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          
+          {/* STUDENT INNOVATIONS */}
+          <div className="space-y-8">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-bold uppercase tracking-wider animate-fade-in-up delay-cards-2">
+              <Sparkles size={16} /> For Students
+            </div>
+            
+            <div className="space-y-6">
+              {[
+                { 
+                  icon: <Cpu className="text-pink-400" />, 
+                  title: "AI Cover Letter Architect", 
+                  desc: "Instantly generate professional, bespoke cover letters tailored to your specific resume analysis results." 
+                },
+                { 
+                  icon: <TrendingUp className="text-indigo-400" />, 
+                  title: "Actionable Skill Roadmaps", 
+                  desc: "Don't just see what's missing. Get a step-by-step roadmap to acquire high-demand enterprise skills." 
+                },
+                { 
+                  icon: <FileText className="text-blue-400" />, 
+                  title: "One-Click PDF Reports", 
+                  desc: "Download comprehensive ATS forensic reports to share with mentors or keep for your records." 
+                }
+              ].map((feature, i) => (
+                <div key={i} className="group flex gap-5 p-6 rounded-2xl bg-[#1e293b]/30 border border-slate-800 hover:border-indigo-500/30 transition-all animate-fade-in-up" style={{ animationDelay: `${2300 + (i * 150)}ms` }}>
+                  <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    {feature.icon}
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-1">{feature.title}</h4>
+                    <p className="text-slate-400 text-sm leading-relaxed">{feature.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* PARTNER INNOVATIONS */}
+          <div className="space-y-8">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-bold uppercase tracking-wider animate-fade-in-up delay-cards-2">
+              <Building2 size={16} /> For Partners
+            </div>
+            
+            <div className="space-y-6">
+              {[
+                { 
+                  icon: <Activity className="text-emerald-400" />, 
+                  title: "Curriculum Gap Intelligence", 
+                  desc: "Aggregated analytics showing exactly which technologies your entire cohort is missing, in real-time." 
+                },
+                { 
+                  icon: <Rocket className="text-orange-400" />, 
+                  title: "Bulk Student Onboarding", 
+                  desc: "Seamlessly provision thousands of student accounts via simple CSV import, tied to your unique cohort ID." 
+                },
+                { 
+                  icon: <CheckCircle className="text-purple-400" />, 
+                  title: "Placement Match Metrics", 
+                  desc: "Track the real-world hiring probability of your students across multiple industry sectors." 
+                }
+              ].map((feature, i) => (
+                <div key={i} className="group flex gap-5 p-6 rounded-2xl bg-[#1e293b]/30 border border-slate-800 hover:border-emerald-500/30 transition-all animate-fade-in-up" style={{ animationDelay: `${2300 + (i * 150)}ms` }}>
+                  <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    {feature.icon}
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-1">{feature.title}</h4>
+                    <p className="text-slate-400 text-sm leading-relaxed">{feature.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* FOOTER */}
+      <footer className="max-w-6xl mx-auto px-6 py-12 border-t border-slate-800/50 text-center">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <SkillNovaLogo className="w-6 h-6 grayscale opacity-50" />
+          <span className="text-slate-500 font-bold uppercase tracking-widest text-xs">SkillNova Ecosystem</span>
+        </div>
+        <p className="text-slate-600 text-xs">© 2026 SkillNova. Empowering the next generation of enterprise talent.</p>
+      </footer>
     </div>
   );
 }
