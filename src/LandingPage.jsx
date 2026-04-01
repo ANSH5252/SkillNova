@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Activity, Zap, Briefcase, Search, 
@@ -24,6 +24,11 @@ const SkillNovaLogo = ({ className = "w-10 h-10" }) => (
 export default function LandingPage() {
   const [persona, setPersona] = useState('student');
   const [activeSection, setActiveSection] = useState('portals');
+  
+  // Refs for high-performance animation tracking
+  const gridRef = useRef(null);
+  const mousePos = useRef({ x: 0, y: 0 });
+  const timeOffset = useRef({ x: 0, y: 0 });
 
   // --- SCROLLSPY LOGIC FOR NAVBAR HIGHLIGHTING ---
   useEffect(() => {
@@ -41,6 +46,41 @@ export default function LandingPage() {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // --- 60FPS CONTINUOUS + PARALLAX GRID LOGIC ---
+  useEffect(() => {
+    let animationFrameId;
+
+    const handleMouseMove = (e) => {
+      // Calculate distance from center of screen
+      mousePos.current.x = e.clientX - window.innerWidth / 2;
+      mousePos.current.y = e.clientY - window.innerHeight / 2;
+    };
+
+    const animate = () => {
+      if (gridRef.current) {
+        // 1. Continuous infinite movement (diagonally top-right)
+        timeOffset.current.x += 0.4;
+        timeOffset.current.y -= 0.4;
+
+        // 2. Subtract mouse position to move in the exact OPPOSITE direction
+        const bgX = timeOffset.current.x - (mousePos.current.x * 0.08);
+        const bgY = timeOffset.current.y - (mousePos.current.y * 0.08);
+
+        // Apply to DOM directly for buttery smoothness
+        gridRef.current.style.backgroundPosition = `${bgX}px ${bgY}px`;
+      }
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    animate(); // Start the loop
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
   }, []);
 
   const heroContent = {
@@ -131,16 +171,12 @@ export default function LandingPage() {
           .delay-nav { animation-delay: 1400ms; }
           .delay-100 { animation-delay: 1500ms; }
           
-          @keyframes gridMove {
-            0% { background-position: 0px 0px; }
-            100% { background-position: 40px -40px; }
-          }
           .bg-grid-pattern {
             background-image: 
-              linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+              linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
             background-size: 40px 40px;
-            animation: gridMove 3s linear infinite;
+            /* CSS Transitions/Animations removed because requestAnimationFrame handles it natively now */
           }
         `}
       </style>
@@ -199,7 +235,8 @@ export default function LandingPage() {
 
       {/* --- DYNAMIC HERO SECTION (PORTALS) --- */}
       <section id="portals" className="relative pt-48 pb-20 px-6 flex-grow flex flex-col items-center justify-center min-h-[90vh]">
-        <div className="absolute inset-0 bg-grid-pattern [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)] pointer-events-none"></div>
+        {/* GRID REF ATTACHED HERE */}
+        <div ref={gridRef} className="absolute inset-0 bg-grid-pattern [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)] pointer-events-none"></div>
         <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b ${activeContent.glow} blur-[150px] rounded-full pointer-events-none transition-colors duration-1000`}></div>
         
         <div className="max-w-5xl mx-auto text-center relative z-10 w-full animate-fade-in-up delay-100">
