@@ -53,29 +53,26 @@ export default function LandingPage() {
     let animationFrameId;
 
     const handleMouseMove = (e) => {
-      // Calculate distance from center of screen
       mousePos.current.x = e.clientX - window.innerWidth / 2;
       mousePos.current.y = e.clientY - window.innerHeight / 2;
     };
 
     const animate = () => {
       if (gridRef.current) {
-        // 1. Continuous infinite movement (diagonally top-right)
         timeOffset.current.x += 0.4;
         timeOffset.current.y -= 0.4;
 
-        // 2. Subtract mouse position to move in the exact OPPOSITE direction
         const bgX = timeOffset.current.x - (mousePos.current.x * 0.08);
         const bgY = timeOffset.current.y - (mousePos.current.y * 0.08);
 
-        // Apply to DOM directly for buttery smoothness
-        gridRef.current.style.backgroundPosition = `${bgX}px ${bgY}px`;
+        // Apply to both layers of the dual grid
+        gridRef.current.style.backgroundPosition = `${bgX}px ${bgY}px, ${bgX}px ${bgY}px, ${bgX}px ${bgY}px, ${bgX}px ${bgY}px`;
       }
       animationFrameId = requestAnimationFrame(animate);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    animate(); // Start the loop
+    animate(); 
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
@@ -96,44 +93,45 @@ export default function LandingPage() {
       link: "/login",
       state: { intendedPath: '/student' }
     },
-    employer: {
-      id: 'employer',
-      headline: <>Pre-Vetted Technical <br className="hidden md:block" />Talent Pipeline.</>,
-      subhead: "Bypass the resume spam. Access a curated dashboard of verified candidates whose technical skills have already been validated against your exact open roles.",
-      gradient: "from-amber-300 via-orange-400 to-rose-400",
-      glow: "from-amber-500/20 to-orange-600/10",
-      btnText: "Enter Talent Hub",
-      btnIcon: <Search size={18} />,
-      btnClass: "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 shadow-[0_0_30px_rgba(245,158,11,0.4)] border border-amber-400/20",
-      link: "/login",
-      state: { intendedPath: '/employer' }
-    },
     university: {
       id: 'university',
       headline: <>Real-Time Cohort <br className="hidden md:block" />Intelligence Dashboard.</>,
       subhead: "Securely provision student accounts and gain deep, real-time analytics on curriculum skill gaps, at-risk students, and overall placement probability.",
-      gradient: "from-emerald-300 via-teal-400 to-cyan-400",
-      glow: "from-emerald-600/20 to-teal-600/10",
+      gradient: "from-amber-300 via-orange-400 to-rose-400",  // Swapped to Amber
+      glow: "from-amber-500/20 to-orange-600/10",
       btnText: "Apply for Enterprise",
-      btnIcon: <Network size={18} />,
-      btnClass: "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-[0_0_30px_rgba(16,185,129,0.4)] border border-emerald-400/20",
+      btnIcon: <Building2 size={18} />,
+      btnClass: "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 shadow-[0_0_30px_rgba(245,158,11,0.4)] border border-amber-400/20",
       link: "/apply",
       state: null
+    },
+    employer: {
+      id: 'employer',
+      headline: <>Pre-Vetted Technical <br className="hidden md:block" />Talent Pipeline.</>,
+      subhead: "Bypass the resume spam. Access a curated dashboard of verified candidates whose technical skills have already been validated against your exact open roles.",
+      gradient: "from-emerald-300 via-teal-400 to-cyan-400", // Swapped to Emerald
+      glow: "from-emerald-600/20 to-teal-600/10",
+      btnText: "Enter Talent Hub",
+      btnIcon: <Network size={18} />,
+      btnClass: "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-[0_0_30px_rgba(16,185,129,0.4)] border border-emerald-400/20",
+      link: "/login",
+      state: { intendedPath: '/employer' }
     }
   };
 
   const activeContent = heroContent[persona];
 
+  // Updated logic to match the new Student -> University -> Employer order
   const getSliderTranslate = () => {
     if (persona === 'student') return 'translate-x-0';
-    if (persona === 'employer') return 'translate-x-[100%]';
-    if (persona === 'university') return 'translate-x-[200%]';
+    if (persona === 'university') return 'translate-x-[100%]';
+    if (persona === 'employer') return 'translate-x-[200%]';
   };
 
   const getSliderColor = () => {
     if (persona === 'student') return 'bg-indigo-500/20 border-indigo-500/40 shadow-[0_0_15px_rgba(99,102,241,0.3)]';
-    if (persona === 'employer') return 'bg-amber-500/20 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.3)]';
-    if (persona === 'university') return 'bg-emerald-500/20 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.3)]';
+    if (persona === 'university') return 'bg-amber-500/20 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.3)]';
+    if (persona === 'employer') return 'bg-emerald-500/20 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.3)]';
   };
 
   return (
@@ -171,12 +169,15 @@ export default function LandingPage() {
           .delay-nav { animation-delay: 1400ms; }
           .delay-100 { animation-delay: 1500ms; }
           
+          /* UPGRADED DUAL-LAYERED GRID */
           .bg-grid-pattern {
             background-image: 
-              linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
-            background-size: 40px 40px;
-            /* CSS Transitions/Animations removed because requestAnimationFrame handles it natively now */
+              linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px),
+              linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+            transition: background-position 0.1s ease-out;
           }
         `}
       </style>
@@ -241,17 +242,25 @@ export default function LandingPage() {
         
         <div className="max-w-5xl mx-auto text-center relative z-10 w-full animate-fade-in-up delay-100">
 
-          <div className="relative flex items-center p-1.5 bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/10 rounded-full mb-12 mx-auto w-full max-w-[360px] md:max-w-[480px] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+          {/* REORDERED TABS */}
+          <div className="relative flex items-center p-1.5 bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/10 rounded-full mb-12 mx-auto w-full max-w-[360px] md:max-w-[500px] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
             <div className={`absolute top-1.5 bottom-1.5 left-1.5 w-[calc(33.333%-4px)] rounded-full border transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] ${getSliderTranslate()} ${getSliderColor()}`}></div>
+            
+            {/* Student Tab */}
             <button onClick={() => setPersona('student')} className={`relative z-10 flex-1 py-2.5 rounded-full text-sm font-bold transition-colors duration-300 flex items-center justify-center gap-2 ${persona === 'student' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
               <User size={16} className={persona === 'student' ? 'text-indigo-300' : ''} /> <span className="hidden sm:inline">Students</span><span className="sm:hidden">Student</span>
             </button>
-            <button onClick={() => setPersona('employer')} className={`relative z-10 flex-1 py-2.5 rounded-full text-sm font-bold transition-colors duration-300 flex items-center justify-center gap-2 ${persona === 'employer' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
-              <Briefcase size={16} className={persona === 'employer' ? 'text-amber-300' : ''} /> <span className="hidden sm:inline">Employers</span><span className="sm:hidden">Employer</span>
-            </button>
+
+            {/* University Tab (Now in the middle) */}
             <button onClick={() => setPersona('university')} className={`relative z-10 flex-1 py-2.5 rounded-full text-sm font-bold transition-colors duration-300 flex items-center justify-center gap-2 ${persona === 'university' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
-              <Building2 size={16} className={persona === 'university' ? 'text-emerald-300' : ''} /> <span className="hidden sm:inline">Universities</span><span className="sm:hidden">Uni</span>
+              <Building2 size={16} className={persona === 'university' ? 'text-amber-300' : ''} /> <span className="hidden sm:inline">Universities</span><span className="sm:hidden">Uni</span>
             </button>
+
+            {/* Employer Tab (Now on the right) */}
+            <button onClick={() => setPersona('employer')} className={`relative z-10 flex-1 py-2.5 rounded-full text-sm font-bold transition-colors duration-300 flex items-center justify-center gap-2 ${persona === 'employer' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
+              <Briefcase size={16} className={persona === 'employer' ? 'text-emerald-300' : ''} /> <span className="hidden sm:inline">Employers</span><span className="sm:hidden">Employer</span>
+            </button>
+            
           </div>
           
           <div key={persona} className="animate-tab-switch min-h-[220px]">
