@@ -131,11 +131,16 @@ export default function LandingPage() {
           .delay-nav { animation-delay: 1400ms; }
           .delay-100 { animation-delay: 1500ms; }
           
+          @keyframes gridMove {
+            0% { background-position: 0px 0px; }
+            100% { background-position: 40px -40px; }
+          }
           .bg-grid-pattern {
             background-image: 
               linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
               linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
             background-size: 40px 40px;
+            animation: gridMove 3s linear infinite;
           }
         `}
       </style>
