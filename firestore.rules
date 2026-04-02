@@ -62,6 +62,21 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && isSuperAdmin();
     }    
 
+    // --- EMPLOYER APPLICATIONS ---
+    match /employer_applications/{appId} {
+      // Anyone can submit an application
+      allow create: if true; 
+      // SECURED: Only Super Admins can view the applications list
+      allow read: if request.auth != null && isSuperAdmin(); 
+      allow update, delete: if request.auth != null && isSuperAdmin();
+    }
+
+    // --- JOB POSTINGS ---
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null; 
+    }
+
     // --- QA ACCOUNTS (DEVELOPER BYPASS) ---
     match /qa_accounts/{accountId} {
       // Anyone logged in can check if their own email exists on the VIP list

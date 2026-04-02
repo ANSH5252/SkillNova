@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Building, Search, Filter, Star, Briefcase, Award, 
-  CheckCircle, Activity, UserPlus, MapPin, Users, FileText, TrendingUp, Clock
+  CheckCircle, Activity, UserPlus, MapPin, Users, FileText, 
+  TrendingUp, Clock, Plus, X, Globe, DollarSign
 } from 'lucide-react';
 import { auth, db } from './firebase';
-import { collection, query, onSnapshot, orderBy, where } from 'firebase/firestore'; 
+import { collection, query, onSnapshot, orderBy, where, addDoc, serverTimestamp } from 'firebase/firestore'; 
 import { useAuth } from './AuthContext';
 
 export default function EmployerDashboard() {
   const { currentUser } = useAuth();
   
+  // --- UI TABS ---
+  const [activeTab, setActiveTab] = useState('discovery'); // discovery, jobs, applicants
+
   // --- RAW DATA STATES ---
   const [rawScans, setRawScans] = useState([]);
   const [optedInEmails, setOptedInEmails] = useState(new Set());
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // --- DERIVED DATA STATE ---
@@ -22,6 +27,17 @@ export default function EmployerDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('All Roles');
   const [shortlisted, setShortlisted] = useState(new Set());
+
+  // --- JOB MODAL STATE ---
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [jobFormData, setJobFormData] = useState({
+    title: '',
+    location: '',
+    salary: '',
+    type: 'Full-time',
+    description: '',
+    requirements: ''
+  });
 
   // 1. Fetch Opted-In Students
   useEffect(() => {
@@ -37,7 +53,7 @@ export default function EmployerDashboard() {
     return () => unsubscribeProfiles();
   }, []);
 
-  // 2. Fetch All Scans
+  // 2. Fetch All Scans (For Candidate Discovery)
   useEffect(() => {
     const scansQ = query(collection(db, 'ats_scans'), orderBy('timestamp', 'desc'));
     const unsubscribeScans = onSnapshot(scansQ, (snapshot) => {
@@ -48,7 +64,18 @@ export default function EmployerDashboard() {
     return () => unsubscribeScans();
   }, []);
 
-  // 3. The Deduplication & Peak Performance Engine
+  // 3. Fetch Jobs Posted by this Employer
+  useEffect(() => {
+    if (!currentUser) return;
+    const jobsQ = query(collection(db, 'jobs'), where('employerId', '==', currentUser.uid), orderBy('createdAt', 'desc'));
+    const unsubscribeJobs = onSnapshot(jobsQ, (snapshot) => {
+      setJobs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => console.error("Error fetching jobs:", error));
+
+    return () => unsubscribeJobs();
+  }, [currentUser]);
+
+  // 4. Candidate Deduplication logic
   useEffect(() => {
     if (rawScans.length === 0 && optedInEmails.size === 0) {
       setLoading(false);
@@ -88,6 +115,23 @@ export default function EmployerDashboard() {
     setLoading(false);
   }, [rawScans, optedInEmails]);
 
+  const handlePostJob = async (e) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, 'jobs'), {
+        ...jobFormData,
+        employerId: currentUser.uid,
+        employerName: currentUser.displayName || 'Unknown Employer',
+        createdAt: serverTimestamp(),
+        active: true
+      });
+      setShowJobModal(false);
+      setJobFormData({ title: '', location: '', salary: '', type: 'Full-time', description: '', requirements: '' });
+    } catch (err) {
+      console.error("Post job error:", err);
+    }
+  };
+
   const handleShortlist = (id) => {
     setShortlisted(prev => {
       const newSet = new Set(prev);
@@ -110,224 +154,321 @@ export default function EmployerDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center space-y-4">
-        <Activity className="text-indigo-500 animate-spin w-12 h-12" />
-        <p className="text-indigo-400 font-medium animate-pulse">Curating top talent...</p>
+      <div className="min-h-screen bg-[#04060d] flex flex-col items-center justify-center space-y-4">
+        <Activity className="text-emerald-500 animate-spin w-12 h-12" />
+        <p className="text-emerald-400 font-bold animate-pulse tracking-widest text-xs uppercase">Initializing Pipeline...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-200 p-4 md:p-8 font-sans pb-24 relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#04060d] text-slate-200 p-4 md:p-8 font-sans pb-24 relative overflow-x-hidden">
       
       {/* Dynamic Ambient Background */}
-      <div className="fixed top-0 right-0 w-[800px] h-[500px] bg-gradient-to-br from-indigo-500/10 to-purple-500/10 blur-[150px] rounded-full pointer-events-none z-0"></div>
-      <div className="fixed bottom-0 left-0 w-[600px] h-[400px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
+      <div className="fixed top-0 right-0 w-[800px] h-[500px] bg-emerald-500/5 blur-[150px] rounded-full pointer-events-none z-0"></div>
+      <div className="fixed bottom-0 left-0 w-[600px] h-[400px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
 
       <div className="max-w-7xl mx-auto relative z-10">
         
         {/* --- TOP NAVIGATION & BRANDING --- */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 border-b border-slate-700/60 pb-6 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 border-b border-white/5 pb-6 gap-6">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-[10px] md:text-xs font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(99,102,241,0.15)]">
-                <Building size={14} /> SkillNova B2B Portal
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest shadow-sm">
+                <Building size={14} /> SkillNova Enterprise Hub
               </div>
             </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight flex items-center gap-3">
-              Talent Discovery Hub
+            <h1 className="text-4xl font-black text-white tracking-tighter">
+              Manage Ecosystem
             </h1>
-            <p className="text-slate-400 mt-2 text-sm md:text-base font-medium">Find pre-vetted, high-match candidates curated by SkillNova's AI.</p>
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="px-5 py-2.5 bg-[#1e293b]/80 backdrop-blur-md border border-slate-700 rounded-xl flex items-center gap-2.5 shadow-lg">
-              <Star className="text-amber-400 fill-amber-400/20" size={18} strokeWidth={2.5} />
-              <span className="text-sm font-bold text-white">{shortlisted.size} Shortlisted</span>
+            <div className="px-5 py-2.5 bg-[#0a0f1c] border border-white/10 rounded-xl flex items-center gap-2.5 shadow-xl">
+              <Star className="text-amber-400 fill-amber-400/20" size={18} />
+              <span className="text-xs font-black text-white uppercase tracking-widest">{shortlisted.size} Candidates</span>
             </div>
-            <button onClick={() => auth.signOut()} className="px-5 py-2.5 bg-slate-800/80 backdrop-blur-md hover:bg-rose-500/10 hover:text-rose-400 border border-slate-700 hover:border-rose-500/30 rounded-xl text-sm font-bold transition-all shadow-lg">
+            <button onClick={() => auth.signOut()} className="px-5 py-2.5 bg-slate-800 hover:bg-rose-500/10 hover:text-rose-400 border border-slate-700 hover:border-rose-500/30 rounded-xl text-xs font-black uppercase tracking-widest transition-all">
               Sign Out
             </button>
           </div>
         </div>
 
-        {/* --- SHARP METRICS WITH POP ANIMATION --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          
-          <div className="bg-[#1e293b]/80 backdrop-blur-xl border border-slate-700 hover:border-blue-500/50 p-6 md:p-8 rounded-2xl flex items-center justify-between transition-all duration-300 group shadow-xl shadow-black/20 hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-500/20 cursor-default">
-            <div>
-              <p className="text-slate-400 text-[11px] md:text-xs font-bold uppercase tracking-widest mb-2">Total Active Candidates</p>
-              <h4 className="text-4xl font-black text-white">{candidates.length}</h4>
-            </div>
-            <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-500/20 transition-all shadow-[0_0_15px_rgba(59,130,246,0.15)]">
-              <Users className="text-blue-400" size={28} strokeWidth={2.5} />
-            </div>
-          </div>
-
-          <div className="bg-[#1e293b]/80 backdrop-blur-xl border border-slate-700 hover:border-emerald-500/50 p-6 md:p-8 rounded-2xl flex items-center justify-between transition-all duration-300 group shadow-xl shadow-black/20 hover:-translate-y-1 hover:shadow-2xl hover:shadow-emerald-500/20 cursor-default">
-            <div>
-              <p className="text-slate-400 text-[11px] md:text-xs font-bold uppercase tracking-widest mb-2">High-Match (75%+)</p>
-              <h4 className="text-4xl font-black text-emerald-400">{topCandidatesCount}</h4>
-            </div>
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-              <Award className="text-emerald-400" size={28} strokeWidth={2.5} />
-            </div>
-          </div>
-
-          <div className="bg-[#1e293b]/80 backdrop-blur-xl border border-slate-700 hover:border-amber-500/50 p-6 md:p-8 rounded-2xl flex items-center justify-between transition-all duration-300 group shadow-xl shadow-black/20 hover:-translate-y-1 hover:shadow-2xl hover:shadow-amber-500/20 cursor-default">
-            <div>
-              <p className="text-slate-400 text-[11px] md:text-xs font-bold uppercase tracking-widest mb-2">Targeted Roles</p>
-              <h4 className="text-4xl font-black text-amber-400">{availableRoles.length - 1}</h4>
-            </div>
-            <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-500/20 transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)]">
-              <Briefcase className="text-amber-400" size={28} strokeWidth={2.5} />
-            </div>
-          </div>
-
-        </div>
-
-        {/* --- HIGH-CONTRAST SEARCH AND FILTER BAR WITH VISIBLE ICONS --- */}
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="relative flex-grow group">
-            <div className="absolute left-5 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-slate-400 group-focus-within:text-indigo-400 transition-colors">
-              <Search size={20} strokeWidth={2.5} />
-            </div>
-            <input 
-              type="text" 
-              placeholder="Search by candidate email or validated technical skill (e.g. 'React', 'Python')..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#1e293b]/80 backdrop-blur-md border border-slate-700 hover:border-slate-500 focus:border-indigo-500 rounded-xl py-4 pl-14 pr-4 text-sm font-medium text-white outline-none transition-all shadow-inner relative z-0"
-            />
-          </div>
-          <div className="relative min-w-[240px] group">
-            <div className="absolute left-5 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-slate-400 group-focus-within:text-indigo-400 transition-colors">
-              <Filter size={20} strokeWidth={2.5} />
-            </div>
-            <select 
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full bg-[#1e293b]/80 backdrop-blur-md border border-slate-700 hover:border-slate-500 focus:border-indigo-500 rounded-xl py-4 pl-14 px-4 text-sm font-bold text-slate-200 outline-none transition-all appearance-none cursor-pointer shadow-inner relative z-0"
+        {/* --- TABS --- */}
+        <div className="flex items-center gap-1 p-1 bg-[#0a0f1c] border border-white/5 rounded-2xl mb-10 w-fit">
+          {[
+            { id: 'discovery', label: 'Talent Discovery', icon: <Search size={16} /> },
+            { id: 'jobs', label: 'My Postings', icon: <Briefcase size={16} /> },
+            { id: 'applicants', label: 'Applicants', icon: <Users size={16} /> }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all
+                ${activeTab === tab.id 
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                }`}
             >
-              {availableRoles.map(role => (
-                <option key={role} value={role}>{role}</option>
-              ))}
-            </select>
-          </div>
+              {tab.icon} {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* --- DEDUPLICATED CANDIDATE GRID WITH POP ANIMATION --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredCandidates.map(candidate => {
-            const score = candidate.roleMatchScore || candidate.score || 0;
-            const isTopTier = score >= 75;
-            const isShortlisted = shortlisted.has(candidate.email || candidate.id);
-
-            return (
-              <div key={candidate.id} className={`bg-[#1e293b]/80 backdrop-blur-xl border ${isShortlisted ? 'border-indigo-500 shadow-[0_0_25px_rgba(99,102,241,0.2)]' : 'border-slate-700'} rounded-2xl p-6 flex flex-col transition-all duration-300 hover:border-slate-400 hover:-translate-y-1 hover:shadow-2xl relative overflow-hidden group`}>
-                
-                {/* Top Badge */}
-                {isTopTier && (
-                  <div className="absolute top-0 right-0 bg-gradient-to-bl from-emerald-500/20 to-transparent px-5 py-2 border-b border-l border-emerald-500/30 rounded-bl-xl text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
-                    <Star size={12} className="fill-emerald-400" /> Peak Performance
-                  </div>
-                )}
-
-                <div className="flex justify-between items-start mb-6 mt-3">
-                  <div className="pr-4">
-                    <h3 className="text-lg font-bold text-white truncate max-w-[220px]">{candidate.userEmail || 'Anonymous Candidate'}</h3>
-                    <p className="text-sm text-indigo-400 font-bold flex items-center gap-1.5 mt-2 bg-indigo-500/10 w-fit px-2.5 py-1 rounded-md border border-indigo-500/20 shadow-sm">
-                      <Briefcase size={14} strokeWidth={2.5} /> {candidate.targetRole || 'General Engineering'}
-                    </p>
-                  </div>
-                  <div className={`flex flex-col items-center justify-center w-16 h-16 rounded-2xl border-2 ${isTopTier ? 'border-emerald-500/50 text-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.2)]' : 'border-amber-500/50 text-amber-400 bg-amber-500/10'} font-black text-2xl flex-shrink-0`}>
-                    {score}
-                  </div>
-                </div>
-
-                <div className="flex-grow space-y-5">
-                  {/* Skill Pills */}
-                  <div>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-2.5 flex items-center gap-1.5">
-                      <CheckCircle size={14} strokeWidth={2.5}/> Validated Core Skills
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {candidate.foundSkills && candidate.foundSkills.length > 0 ? (
-                        candidate.foundSkills.slice(0, 4).map((skill, i) => (
-                          <span key={i} className="bg-slate-800 border border-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 shadow-sm">
-                            {skill}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-slate-500 italic font-medium">No exact core skills matched.</span>
-                      )}
-                      {candidate.foundSkills && candidate.foundSkills.length > 4 && (
-                        <span className="bg-slate-800/50 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400">
-                          +{candidate.foundSkills.length - 4} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Cohort & Activity Tracking */}
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50">
-                      <p className="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1.5">Cohort Tag</p>
-                      <p className="text-xs font-bold text-slate-300 flex items-center gap-1.5 truncate">
-                        <MapPin size={14} className="text-indigo-400" strokeWidth={2.5} /> {candidate.tenantId?.toUpperCase() || 'PUBLIC-POOL'}
-                      </p>
-                    </div>
-                    <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50">
-                      <p className="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1.5">Activity Level</p>
-                      <p className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                        <TrendingUp size={14} className="text-blue-400" strokeWidth={2.5} /> {candidate.totalScans} Scans Run
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-5 border-t border-slate-700/60 flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Last Active</span>
-                    <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mt-1">
-                      <Clock size={14} strokeWidth={2.5}/> {candidate.timestamp?.toDate ? new Date(candidate.timestamp.toDate()).toLocaleDateString() : 'Recent'}
-                    </span>
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleShortlist(candidate.email || candidate.id)}
-                    className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm ${
-                      isShortlisted 
-                        ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/50 hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/50' 
-                        : 'bg-indigo-600 text-white hover:bg-indigo-500 border border-indigo-500 hover:shadow-indigo-500/25'
-                    }`}
-                  >
-                    {isShortlisted ? (
-                      <><CheckCircle size={16} strokeWidth={2.5} /> Shortlisted</>
-                    ) : (
-                      <><UserPlus size={16} strokeWidth={2.5} /> Shortlist</>
-                    )}
-                  </button>
+        {activeTab === 'discovery' && (
+          <>
+            {/* --- METRICS --- */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/5 p-8 rounded-3xl group transition-all hover:border-emerald-500/30 shadow-2xl">
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-4">Discovery Pool</p>
+                <div className="flex items-end justify-between">
+                  <h4 className="text-5xl font-black text-white leading-none">{candidates.length}</h4>
+                  <Users className="text-emerald-500/30 group-hover:text-emerald-500 transition-colors" size={40} />
                 </div>
               </div>
-            );
-          })}
-
-          {filteredCandidates.length === 0 && !loading && (
-            <div className="col-span-full py-20 text-center bg-slate-800/30 border-2 border-slate-700 border-dashed rounded-3xl backdrop-blur-sm relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/5 to-transparent pointer-events-none"></div>
-              <div className="w-20 h-20 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg relative z-10">
-                <FileText className="text-slate-500" size={36} strokeWidth={2} />
+              <div className="bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/5 p-8 rounded-3xl group transition-all hover:border-indigo-500/30 shadow-2xl">
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-4">Top Match Rate</p>
+                <div className="flex items-end justify-between">
+                  <h4 className="text-5xl font-black text-indigo-400 leading-none">{topCandidatesCount}</h4>
+                  <Award className="text-indigo-500/30 group-hover:text-indigo-500 transition-colors" size={40} />
+                </div>
               </div>
-              <h3 className="text-2xl font-bold text-white relative z-10">No candidates found</h3>
-              <p className="text-slate-400 text-sm mt-3 max-w-md mx-auto leading-relaxed font-medium relative z-10">
-                Either no candidates match your current search filters, or no students have opted into the Employer Network yet.
-              </p>
+              <div className="bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/5 p-8 rounded-3xl group transition-all hover:border-amber-500/30 shadow-2xl">
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-4">Industry Roles</p>
+                <div className="flex items-end justify-between">
+                  <h4 className="text-5xl font-black text-amber-400 leading-none">{availableRoles.length - 1}</h4>
+                  <Briefcase className="text-amber-500/30 group-hover:text-amber-500 transition-colors" size={40} />
+                </div>
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* --- FILTERS --- */}
+            <div className="flex flex-col md:flex-row gap-4 mb-8">
+              <div className="relative flex-grow">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Filter by skill or email..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-[#0a0f1c] border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm text-white outline-none focus:border-emerald-500/50 transition-all shadow-inner"
+                />
+              </div>
+              <div className="relative min-w-[200px]">
+                <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                <select 
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="w-full bg-[#0a0f1c] border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-white outline-none appearance-none cursor-pointer"
+                >
+                  {availableRoles.map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* --- CANDIDATE GRID --- */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredCandidates.map(candidate => {
+                const score = candidate.roleMatchScore || candidate.score || 0;
+                const isShortlisted = shortlisted.has(candidate.email || candidate.id);
+                return (
+                  <div key={candidate.id} className={`bg-[#0a0f1c]/60 backdrop-blur-md border ${isShortlisted ? 'border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.1)]' : 'border-white/5'} p-6 rounded-3xl hover:border-emerald-500/30 transition-all group`}>
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="max-w-[180px]">
+                        <h3 className="text-base font-bold text-white truncate">{candidate.userEmail || 'Anonymous'}</h3>
+                        <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest mt-1 bg-emerald-500/5 w-fit px-2 py-0.5 rounded border border-emerald-500/10">
+                          {candidate.targetRole || 'Engineering'}
+                        </p>
+                      </div>
+                      <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center border-2 ${score >= 75 ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5' : 'border-amber-500 text-amber-400 bg-amber-500/5'} font-black text-xl`}>
+                        {score}
+                        <span className="text-[8px] uppercase -mt-1 opacity-60">ATS</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4 mb-6">
+                       <div className="flex flex-wrap gap-2">
+                        {(candidate.foundSkills || []).slice(0, 3).map((s, i) => (
+                           <span key={i} className="text-[10px] font-bold bg-[#1e293b] text-slate-300 px-2.5 py-1 rounded-lg border border-white/5">{s}</span>
+                        ))}
+                       </div>
+                       <div className="grid grid-cols-2 gap-2">
+                         <div className="bg-white/5 p-2 rounded-xl">
+                            <p className="text-[8px] text-slate-500 font-bold uppercase mb-1">Activity</p>
+                            <p className="text-xs font-bold text-white flex items-center gap-1"><TrendingUp size={12} className="text-emerald-500"/> {candidate.totalScans} Scans</p>
+                         </div>
+                         <div className="bg-white/5 p-2 rounded-xl">
+                            <p className="text-[8px] text-slate-500 font-bold uppercase mb-1">Cohort</p>
+                            <p className="text-xs font-bold text-white flex items-center gap-1 truncate"><MapPin size={12} className="text-emerald-500"/> {candidate.tenantId || 'PUBLIC'}</p>
+                         </div>
+                       </div>
+                    </div>
+
+                    <button 
+                      onClick={() => handleShortlist(candidate.email || candidate.id)}
+                      className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all
+                        ${isShortlisted ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-600 text-white hover:bg-emerald-500'}
+                      `}
+                    >
+                      {isShortlisted ? 'Shortlisted' : 'Shortlist Candidate'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'jobs' && (
+          <div className="animate-fade-in">
+            <div className="flex justify-between items-center mb-10">
+              <div>
+                <h2 className="text-3xl font-black text-white tracking-tight">Active Postings</h2>
+                <p className="text-slate-400 text-sm mt-1">Manage your corporate job listings and hiring pipelines.</p>
+              </div>
+              <button 
+                onClick={() => setShowJobModal(true)}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-2 shadow-xl shadow-emerald-500/20"
+              >
+                <Plus size={18} /> New Posting
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {jobs.map(job => (
+                <div key={job.id} className="bg-[#0a0f1c] border border-white/10 p-8 rounded-3xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full"></div>
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors">{job.title}</h3>
+                      <p className="text-slate-500 text-sm flex items-center gap-2"><MapPin size={14}/> {job.location} • {job.type}</p>
+                    </div>
+                    <div className="text-emerald-400 font-black text-lg">{job.salary}</div>
+                  </div>
+                  <p className="text-slate-400 text-sm leading-relaxed mb-8 border-l-2 border-emerald-500/30 pl-4 italic">
+                    "{job.description.substring(0, 150)}..."
+                  </p>
+                  <div className="flex items-center justify-between mt-auto pt-6 border-t border-white/5">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                       <Clock size={14}/> Posted {new Date(job.createdAt?.toDate()).toLocaleDateString()}
+                    </span>
+                    <button className="text-xs font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-all flex items-center gap-1">
+                      Manage Applicants <ChevronRight size={16}/>
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {jobs.length === 0 && (
+                <div className="col-span-full py-24 text-center border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.02]">
+                  <Briefcase size={48} className="mx-auto text-slate-700 mb-4 opacity-50" />
+                  <h3 className="text-xl font-bold text-slate-400">No active postings found</h3>
+                  <p className="text-slate-500 text-sm mt-2">Start your first hiring campaign by clicking "New Posting".</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'applicants' && (
+          <div className="py-24 text-center border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.02] animate-fade-in">
+             <Users size={48} className="mx-auto text-slate-700 mb-4 opacity-50" />
+             <h3 className="text-xl font-bold text-slate-400">Advanced Applicant Tracking Coming Soon</h3>
+             <p className="text-slate-500 text-sm mt-2 max-w-md mx-auto">This section will display students who specifically applied to your postings through the SkillNova Student Portal.</p>
+          </div>
+        )}
 
       </div>
+
+      {/* --- POST JOB MODAL --- */}
+      {showJobModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-[#04060d]/90 backdrop-blur-sm" onClick={() => setShowJobModal(false)}></div>
+          <div className="bg-[#0a0f1c] border border-white/10 w-full max-w-2xl rounded-3xl p-8 relative z-10 shadow-2xl animate-fade-in-up">
+            <button onClick={() => setShowJobModal(false)} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors">
+              <X size={24} />
+            </button>
+            <h2 className="text-2xl font-black text-white mb-8 tracking-tight">Create New Posting</h2>
+            
+            <form onSubmit={handlePostJob} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Job Title</label>
+                  <input 
+                    required
+                    value={jobFormData.title}
+                    onChange={(e) => setJobFormData({...jobFormData, title: e.target.value})}
+                    placeholder="e.g. Senior Software Engineer"
+                    className="w-full bg-[#1e293b]/50 border border-white/10 rounded-xl py-3 px-4 text-white outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Location</label>
+                  <input 
+                    required
+                    value={jobFormData.location}
+                    onChange={(e) => setJobFormData({...jobFormData, location: e.target.value})}
+                    placeholder="e.g. San Francisco, Remote"
+                    className="w-full bg-[#1e293b]/50 border border-white/10 rounded-xl py-3 px-4 text-white outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Salary Estimate</label>
+                  <input 
+                    required
+                    value={jobFormData.salary}
+                    onChange={(e) => setJobFormData({...jobFormData, salary: e.target.value})}
+                    placeholder="e.g. $120k - $150k"
+                    className="w-full bg-[#1e293b]/50 border border-white/10 rounded-xl py-3 px-4 text-white outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Job Type</label>
+                  <select 
+                    value={jobFormData.type}
+                    onChange={(e) => setJobFormData({...jobFormData, type: e.target.value})}
+                    className="w-full bg-[#1e293b]/50 border border-white/10 rounded-xl py-3 px-4 text-white outline-none focus:border-emerald-500 appearance-none"
+                  >
+                    <option value="Full-time">Full-time</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Internship">Internship</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Detailed Description</label>
+                <textarea 
+                  required
+                  rows={4}
+                  value={jobFormData.description}
+                  onChange={(e) => setJobFormData({...jobFormData, description: e.target.value})}
+                  placeholder="Describe the role and your company vision..."
+                  className="w-full bg-[#1e293b]/50 border border-white/10 rounded-xl py-3 px-4 text-white outline-none focus:border-emerald-500 resize-none"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-emerald-500/20"
+              >
+                Launch Posting
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+// Helper icons for the tabs
+const ChevronRight = ({ size, className }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="m9 18 6-6-6-6"/>
+    </svg>
+);

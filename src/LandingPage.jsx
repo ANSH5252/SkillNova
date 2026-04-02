@@ -114,8 +114,8 @@ export default function LandingPage() {
       btnText: "Enter Talent Hub",
       btnIcon: <Network size={18} />,
       btnClass: "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-[0_0_30px_rgba(16,185,129,0.4)] border border-emerald-400/20",
-      link: "/login",
-      state: { intendedPath: '/employer' }
+      link: "/employer-apply",
+      state: null
     }
   };
 
