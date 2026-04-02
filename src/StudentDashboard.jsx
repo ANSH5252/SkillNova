@@ -20,7 +20,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 const SkillNovaLogo = ({ className = "w-10 h-10" }) => (
   <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path d="M50 5L60.5 39.5L95 50L60.5 60.5L50 95L39.5 60.5L5 50L39.5 39.5L50 5Z" fill="url(#nova-gradient)"/>
-    <circle cx="50" cy="50" r="18" fill="#0f172a"/>
+    <circle cx="50" cy="50" r="18" fill="#04060d"/>
     <circle cx="50" cy="50" r="8" fill="url(#nova-gradient)"/>
     <defs>
       <linearGradient id="nova-gradient" x1="5" y1="5" x2="95" y2="95" gradientUnits="userSpaceOnUse">
@@ -76,6 +76,42 @@ export default function StudentDashboard() {
   const [copied, setCopied] = useState(false);
 
   const reportRef = useRef(null);
+
+  const gridRef = useRef(null);
+  const mousePos = useRef({ x: 0, y: 0 });
+  const timeOffset = useRef({ x: 0, y: 0 });
+
+  // --- 60FPS CONTINUOUS + PARALLAX GRID LOGIC ---
+  useEffect(() => {
+    let animationFrameId;
+
+    const handleMouseMove = (e) => {
+      mousePos.current.x = e.clientX - window.innerWidth / 2;
+      mousePos.current.y = e.clientY - window.innerHeight / 2;
+    };
+
+    const animate = () => {
+      if (gridRef.current) {
+        timeOffset.current.x += 0.4;
+        timeOffset.current.y -= 0.4;
+
+        const bgX = timeOffset.current.x - (mousePos.current.x * 0.08);
+        const bgY = timeOffset.current.y - (mousePos.current.y * 0.08);
+
+        // Apply to both layers of the dual grid
+        gridRef.current.style.backgroundPosition = `${bgX}px ${bgY}px, ${bgX}px ${bgY}px, ${bgX}px ${bgY}px, ${bgX}px ${bgY}px`;
+      }
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    animate(); 
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
 
   useEffect(() => {
     const checkAccessLevels = async () => {
@@ -354,7 +390,7 @@ Output EXACTLY this JSON structure:
     if (!reportRef.current) return;
     setExporting(true);
     try {
-      const canvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: '#0f172a' });
+      const canvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: '#04060d' });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'landscape' : 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
@@ -391,14 +427,37 @@ Output EXACTLY this JSON structure:
   const getScoreText = (score) => { if (score >= 75) return 'text-emerald-400'; if (score >= 45) return 'text-amber-400'; return 'text-rose-400'; };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-200 p-4 md:p-8 font-sans pb-24 relative overflow-x-hidden">
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-[#04060d] text-slate-200 p-4 md:p-8 font-sans pb-24 relative overflow-x-hidden">
+      <style>
+        {`
+          html { scroll-behavior: smooth; }
+          .bg-grid-pattern {
+            background-image: 
+              linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px),
+              linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+            transition: background-position 0.1s ease-out;
+          }
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); filter: blur(4px); }
+            to { opacity: 1; transform: translateY(0); filter: blur(0); }
+          }
+          .animate-fade-in-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+        `}
+      </style>
+
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div ref={gridRef} className="absolute inset-0 bg-grid-pattern [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)]"></div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-indigo-600/20 to-purple-600/10 blur-[150px] rounded-full"></div>
+      </div>
 
       <div className="max-w-5xl mx-auto relative z-10">
         
         {/* --- NAVBAR --- */}
         <nav className="sticky top-4 md:top-6 z-50 mb-12 animate-fade-in-up">
-          <div className="bg-[#1e293b]/70 backdrop-blur-xl border border-slate-700/50 rounded-full px-4 py-2.5 flex items-center justify-between shadow-[0_8px_30px_rgb(0,0,0,0.3)]">
+          <div className="bg-[#0a0f1c]/70 backdrop-blur-xl border border-slate-700/50 rounded-full px-4 py-2.5 flex items-center justify-between shadow-[0_8px_30px_rgb(0,0,0,0.3)]">
             <div className="flex items-center gap-3 pl-2">
               <SkillNovaLogo className="w-9 h-9 drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
               <span className="text-lg font-extrabold text-white tracking-tight hidden sm:block">SkillNova</span>
@@ -411,7 +470,7 @@ Output EXACTLY this JSON structure:
                 </div>
               </button>
               {isProfileOpen && (
-                <div className="absolute right-0 mt-3 w-64 bg-[#1e293b]/95 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-2xl overflow-hidden py-2 animate-fade-in-up z-50">
+                <div className="absolute right-0 mt-3 w-64 bg-[#0a0f1c]/95 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-2xl overflow-hidden py-2 animate-fade-in-up z-50">
                   <div className="px-4 py-3 border-b border-slate-700/50 mb-2 bg-slate-800/30">
                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Signed in as</p>
                     <p className="text-sm text-white font-medium truncate">{auth.currentUser?.email}</p>
@@ -444,7 +503,7 @@ Output EXACTLY this JSON structure:
         {/* --- CONTROL PANEL GRID --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           
-          <div className={`w-full bg-[#1e293b]/80 backdrop-blur-md border ${isPremium ? 'border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.15)]' : 'border-slate-700'} rounded-xl px-5 py-4 flex items-center justify-between transition-all`}>
+          <div className={`w-full bg-[#0a0f1c]/80 backdrop-blur-md border ${isPremium ? 'border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.15)]' : 'border-slate-700'} rounded-xl px-5 py-4 flex items-center justify-between transition-all`}>
             <div className="flex items-center gap-3">
               {isPremium ? <Crown className="text-indigo-400" size={24} /> : <Activity className="text-slate-500" size={24} />}
               <div>
@@ -477,7 +536,7 @@ Output EXACTLY this JSON structure:
           {!isPremium ? (
             <div 
               onClick={() => setShowUpgradeModal(true)}
-              className="w-full relative overflow-hidden rounded-xl border border-indigo-500/40 bg-[#1e293b]/90 p-4 cursor-pointer group hover:border-purple-400 transition-all shadow-[0_0_20px_rgba(99,102,241,0.15)]"
+              className="w-full relative overflow-hidden rounded-xl border border-indigo-500/40 bg-[#0a0f1c]/90 p-4 cursor-pointer group hover:border-purple-400 transition-all shadow-[0_0_20px_rgba(99,102,241,0.15)]"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 opacity-50 group-hover:opacity-100 transition-opacity"></div>
               <div className="absolute -right-6 -top-6 w-24 h-24 bg-purple-500/30 blur-2xl rounded-full"></div>
@@ -505,7 +564,7 @@ Output EXACTLY this JSON structure:
             </div>
           ) : (
             // The Normal Toggle for Premium Users
-            <div className={`w-full bg-[#1e293b]/80 backdrop-blur-md border ${isOpenToOpportunities ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-slate-700'} rounded-xl px-5 py-4 flex items-center justify-between transition-all cursor-pointer`} onClick={() => !isUpdatingProfile && handleToggleOpportunities()}>
+            <div className={`w-full bg-[#0a0f1c]/80 backdrop-blur-md border ${isOpenToOpportunities ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-slate-700'} rounded-xl px-5 py-4 flex items-center justify-between transition-all cursor-pointer`} onClick={() => !isUpdatingProfile && handleToggleOpportunities()}>
               <div className="flex items-center gap-3">
                 <div className={`p-2.5 md:p-3 rounded-full transition-colors ${isOpenToOpportunities ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
                   <Network size={20} />
@@ -534,7 +593,7 @@ Output EXACTLY this JSON structure:
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 relative z-10">
-          <div className="bg-[#1e293b]/60 backdrop-blur-sm border border-slate-800 p-5 md:p-6 rounded-2xl flex flex-col hover:border-slate-700 transition-colors">
+          <div className="bg-[#0a0f1c]/60 backdrop-blur-sm border border-slate-800 p-5 md:p-6 rounded-2xl flex flex-col hover:border-slate-700 transition-colors">
             
             {/* --- THE TRIPLE-THREAT TABS --- */}
             <div className="flex flex-col sm:flex-row p-1 bg-slate-800/80 rounded-lg mb-6 border border-slate-700 shadow-inner gap-1">
@@ -584,14 +643,14 @@ Output EXACTLY this JSON structure:
                   <div className="relative mb-4">
                     <button type="button" onClick={() => { setIsCompanyDropdownOpen(!isCompanyDropdownOpen); setIsRoleDropdownOpen(false); }} className="w-full bg-slate-900/50 border border-slate-700 rounded-xl p-3 md:p-4 flex justify-between items-center text-white text-sm md:text-base font-medium hover:border-indigo-500/50 transition-colors shadow-inner"><span className={selectedCompany ? 'text-white' : 'text-slate-400'}>{selectedCompany || "Select a Company..."}</span><ChevronDown size={18} className={`text-slate-400 transition-transform duration-200 ${isCompanyDropdownOpen ? 'rotate-180' : ''}`} /></button>
                     {isCompanyDropdownOpen && (
-                      <div className="absolute z-50 w-full mt-2 bg-[#1e293b]/95 backdrop-blur-xl border border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">{partnerCompanies.map((c, i) => (<div key={i} onClick={() => { setSelectedCompany(c.name); setSelectedCompanyRole(''); setIsCompanyDropdownOpen(false); }} className="px-4 py-3 cursor-pointer text-sm text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors border-b border-slate-700/50 last:border-0">{c.name}</div>))}</div>
+                      <div className="absolute z-50 w-full mt-2 bg-[#0a0f1c]/95 backdrop-blur-xl border border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">{partnerCompanies.map((c, i) => (<div key={i} onClick={() => { setSelectedCompany(c.name); setSelectedCompanyRole(''); setIsCompanyDropdownOpen(false); }} className="px-4 py-3 cursor-pointer text-sm text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors border-b border-slate-700/50 last:border-0">{c.name}</div>))}</div>
                     )}
                   </div>
                   {selectedCompany && (
                     <div className="relative animate-fade-in-up">
                       <button type="button" onClick={() => { setIsRoleDropdownOpen(!isRoleDropdownOpen); setIsCompanyDropdownOpen(false); }} className="w-full bg-slate-900/50 border border-slate-700 rounded-xl p-3 md:p-4 flex justify-between items-center text-white text-sm md:text-base font-medium hover:border-indigo-500/50 transition-colors shadow-inner"><span className={selectedCompanyRole ? 'text-white' : 'text-slate-400'}>{selectedCompanyRole || "Select Open Role..."}</span><ChevronDown size={18} className={`text-slate-400 transition-transform duration-200 ${isRoleDropdownOpen ? 'rotate-180' : ''}`} /></button>
                       {isRoleDropdownOpen && (
-                        <div className="absolute z-50 w-full mt-2 bg-[#1e293b]/95 backdrop-blur-xl border border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">{partnerCompanies.find(c => c.name === selectedCompany)?.roles.map((r, i) => (<div key={i} onClick={() => { setSelectedCompanyRole(r); setIsRoleDropdownOpen(false); }} className="px-4 py-3 cursor-pointer text-sm text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors border-b border-slate-700/50 last:border-0">{r}</div>))}</div>
+                        <div className="absolute z-50 w-full mt-2 bg-[#0a0f1c]/95 backdrop-blur-xl border border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">{partnerCompanies.find(c => c.name === selectedCompany)?.roles.map((r, i) => (<div key={i} onClick={() => { setSelectedCompanyRole(r); setIsRoleDropdownOpen(false); }} className="px-4 py-3 cursor-pointer text-sm text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors border-b border-slate-700/50 last:border-0">{r}</div>))}</div>
                       )}
                     </div>
                   )}
@@ -600,7 +659,7 @@ Output EXACTLY this JSON structure:
             </div>
           </div>
 
-          <div className="bg-[#1e293b]/60 backdrop-blur-sm border border-slate-800 p-5 md:p-6 rounded-2xl flex flex-col relative z-0 hover:border-slate-700 transition-colors">
+          <div className="bg-[#0a0f1c]/60 backdrop-blur-sm border border-slate-800 p-5 md:p-6 rounded-2xl flex flex-col relative z-0 hover:border-slate-700 transition-colors">
              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><FileUp className="text-emerald-400" size={20} /> Upload Resume (PDF)</h3>
             <label className={`flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 transition-all cursor-pointer min-h-[140px] md:min-h-[160px] ${resumeFile ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-700 bg-slate-900/50 hover:border-emerald-500/30'}`}>
               <input type="file" accept=".pdf" onChange={handleFileChange} className="hidden" />
@@ -637,21 +696,21 @@ Output EXACTLY this JSON structure:
               </button>
             </div>
 
-            <div ref={reportRef} className="space-y-6 p-4 md:p-6 -m-4 md:-m-6 bg-[#0f172a] rounded-2xl">
+            <div ref={reportRef} className="space-y-6 p-4 md:p-6 -m-4 md:-m-6 bg-[#04060d] rounded-2xl">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-[#1e293b]/60 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 shadow-lg shadow-black/20">
+                <div className="bg-[#0a0f1c]/60 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 shadow-lg shadow-black/20">
                   <div className="flex justify-between items-center mb-4"><h3 className="text-md font-bold text-white flex items-center gap-2"><LayoutTemplate className="text-blue-400" size={18} /> ATS Readability</h3><span className={`text-2xl font-bold ${getScoreText(aiResult.atsFormatScore)}`}>{aiResult.atsFormatScore}%</span></div>
                   <div className="w-full bg-slate-800 rounded-full h-2.5 mb-4"><div className={`h-2.5 rounded-full ${getScoreColor(aiResult.atsFormatScore)} transition-all duration-1000`} style={{ width: `${aiResult.atsFormatScore}%` }}></div></div>
                   <p className="text-xs text-slate-300 bg-slate-800/50 p-3 rounded-lg border border-slate-700 leading-relaxed">{aiResult.formatMessage}</p>
                 </div>
 
-                <div className="bg-[#1e293b]/60 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 shadow-lg shadow-black/20">
+                <div className="bg-[#0a0f1c]/60 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 shadow-lg shadow-black/20">
                    <div className="flex justify-between items-center mb-4"><h3 className="text-md font-bold text-white flex items-center gap-2"><Briefcase className="text-indigo-400" size={18} /> Technical Match</h3><span className={`text-2xl font-bold ${getScoreText(aiResult.roleMatchScore)}`}>{aiResult.roleMatchScore}%</span></div>
                   <div className="w-full bg-slate-800 rounded-full h-2.5 mb-4"><div className={`h-2.5 rounded-full ${getScoreColor(aiResult.roleMatchScore)} transition-all duration-1000`} style={{ width: `${aiResult.roleMatchScore}%` }}></div></div>
                   <div className="flex flex-col gap-1 mt-3 bg-slate-800/50 p-3 rounded-lg border border-slate-700"><span className="text-xs text-slate-400">System Verdict:</span><span className={`text-sm font-bold tracking-wide ${aiResult.roleMatchScore >= 60 ? 'text-emerald-400' : 'text-rose-400'}`}>{aiResult.verdict}</span></div>
                 </div>
 
-                <div className="bg-[#1e293b]/60 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 relative overflow-hidden shadow-lg shadow-black/20">
+                <div className="bg-[#0a0f1c]/60 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 relative overflow-hidden shadow-lg shadow-black/20">
                   <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-purple-500/20 to-transparent rounded-bl-full"></div>
                   <div className="flex justify-between items-center mb-4 relative z-10"><h3 className="text-md font-bold text-white flex items-center gap-2"><TrendingUp className="text-purple-400" size={18} /> Market Probability</h3><span className={`text-2xl font-bold ${getScoreText(aiResult.marketProbability)}`}>{aiResult.marketProbability}%</span></div>
                   <div className="w-full bg-slate-800 rounded-full h-2.5 mb-4 relative z-10"><div className={`h-2.5 rounded-full ${getScoreColor(aiResult.marketProbability)} transition-all duration-1000`} style={{ width: `${aiResult.marketProbability}%` }}></div></div>
@@ -659,7 +718,7 @@ Output EXACTLY this JSON structure:
                 </div>
               </div>
 
-              <div className="bg-[#1e293b]/40 border border-slate-800 rounded-2xl p-6 md:p-8 relative overflow-hidden">
+              <div className="bg-[#0a0f1c]/40 border border-slate-800 rounded-2xl p-6 md:p-8 relative overflow-hidden">
                 <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 transition-all duration-500 ${!isPremium ? 'blur-[6px] opacity-30 select-none pointer-events-none' : ''}`}>
                   
                   <div className="space-y-8">
@@ -710,7 +769,7 @@ Output EXACTLY this JSON structure:
                 </div>
 
                 {!isPremium && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0f172a]/40 backdrop-blur-[2px] p-6 text-center">
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#04060d]/40 backdrop-blur-[2px] p-6 text-center">
                     <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
                       <Lock className="text-indigo-400 w-8 h-8" />
                     </div>
@@ -735,7 +794,7 @@ Output EXACTLY this JSON structure:
         {/* --- UPGRADE TO PREMIUM MODAL --- */}
         {showUpgradeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
-            <div className="bg-gradient-to-b from-[#1e293b] to-[#0f172a] border border-indigo-500/30 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col relative">
+            <div className="bg-gradient-to-b from-[#0a0f1c] to-[#04060d] border border-indigo-500/30 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col relative">
               <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10"><X size={20} /></button>
               
               <div className="p-8 text-center">
@@ -766,7 +825,7 @@ Output EXACTLY this JSON structure:
         {/* --- COVER LETTER MODAL --- */}
         {showLetterModal && isPremium && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
-            <div className="bg-[#1e293b] border border-slate-700 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-[#0a0f1c] border border-slate-700 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
               <div className="px-4 py-3 md:px-6 md:py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
                 <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
                    <Sparkles className="text-indigo-400" /> AI Cover Letter Draft
@@ -777,7 +836,7 @@ Output EXACTLY this JSON structure:
                 {isGeneratingLetter ? (
                   <div className="flex flex-col items-center justify-center py-12 space-y-4"><Activity className="text-indigo-500 animate-spin w-8 h-8 md:w-10 md:h-10" /><p className="text-slate-400 animate-pulse text-sm md:text-base">Drafting your perfect response...</p></div>
                 ) : (
-                  <div className="space-y-4 text-slate-300 leading-relaxed whitespace-pre-wrap font-serif text-sm md:text-lg bg-[#0f172a] p-4 md:p-6 rounded-xl border border-slate-800 font-mono shadow-inner">
+                  <div className="space-y-4 text-slate-300 leading-relaxed whitespace-pre-wrap font-serif text-sm md:text-lg bg-[#04060d] p-4 md:p-6 rounded-xl border border-slate-800 font-mono shadow-inner">
                     {coverLetter}
                   </div>
                 )}
