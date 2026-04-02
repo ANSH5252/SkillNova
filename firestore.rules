@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- HELPER FUNCTIONS ---
+    function isSuperAdmin() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'superadmin';
+    }
+
+    function isEmployer() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'employer';
+    }
+    
+    function getAdminTenantId() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.tenantId;
+    }
+
+    // --- STUDENT PROFILES (Employer Network) ---
+    match /student_profiles/{emailId} {
+      allow read: if request.auth != null; 
+      // FIX: Changed .toLowerCase() to .lower() for Firebase syntax
+      allow write: if request.auth.token.email != null && request.auth.token.email.lower() == emailId;
+    }
+
+    // --- ATS SCANS COLLECTION ---
+    match /ats_scans/{scanId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isSuperAdmin() ||
+        isEmployer() || // Allow employers to read all scans
+        (getAdminTenantId() == resource.data.tenantId)
+      );
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // --- ADMINS COLLECTION ---
+    match /admins/{adminId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isSuperAdmin();
+    }
+
+    // --- ENTERPRISE STUDENT WHITELIST ---
+    match /allowed_students/{emailId} {
+      // 1. Students can read their own whitelist document
+      // 2. SuperAdmins can read all
+      // 3. Partners can read students assigned to their tenantId
+      allow read: if request.auth != null && (
+        request.auth.token.email == emailId || 
+        isSuperAdmin() || 
+        (getAdminTenantId() == resource.data.tenantId)
+      );
+      
+      // Only SuperAdmins can add/remove students from the whitelist
+      allow write: if request.auth != null && isSuperAdmin();
+    }
+  
+    // --- ENTERPRISE APPLICATIONS ---
+    match /partner_applications/{appId} {
+      allow create: if true; 
+      allow read: if true; // Allows the Login page to check status
+      allow update, delete: if request.auth != null && isSuperAdmin();
+    }    
+
+    // --- EMPLOYER APPLICATIONS ---
+    match /employer_applications/{appId} {
+      // Anyone can submit an application
+      allow create: if true; 
+      // SECURED: Only Super Admins can view the applications list
+      allow read: if request.auth != null && isSuperAdmin(); 
+      allow update, delete: if request.auth != null && isSuperAdmin();
+    }
+
+    // --- JOB POSTINGS ---
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null; 
+    }
+
+    // --- QA ACCOUNTS (DEVELOPER BYPASS) ---
+    match /qa_accounts/{accountId} {
+      // Anyone logged in can check if their own email exists on the VIP list
+      allow read: if request.auth != null;
+      // CRITICAL: Nobody can add/remove themselves from the app. Must be done via Firebase Console.
+      allow write: if false; 
+    }
+  } 
+}

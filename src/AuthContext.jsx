@@ -12,28 +12,60 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState('student'); 
+  const [tenantId, setTenantId] = useState(null);
+  
   const [loading, setLoading] = useState(true);
+  const [isFetchingRole, setIsFetchingRole] = useState(true);
 
   useEffect(() => {
-    // This listener automatically fires whenever a user logs in or logs out
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      setIsFetchingRole(true); 
       
       if (user) {
-        // Check if the logged-in email exists in the 'admins' collection in Firestore
         try {
-          const adminDocRef = doc(db, 'admins', user.email);
+          // 1. Check if they are an Admin/Partner/Employer (Forced lowercase for safety)
+          const adminDocRef = doc(db, 'admins', user.email.toLowerCase());
           const adminDocSnap = await getDoc(adminDocRef);
-          setIsAdmin(adminDocSnap.exists());
+          
+          if (adminDocSnap.exists()) {
+            const data = adminDocSnap.data();
+            setIsAdmin(true);
+            setUserRole(data.role || 'partner'); 
+            setTenantId(data.tenantId || null);  
+          } else {
+            // 2. Not an Admin. Are they a pre-registered Premium Student?
+            const studentDocRef = doc(db, 'allowed_students', user.email.toLowerCase());
+            const studentDocSnap = await getDoc(studentDocRef);
+
+            if (studentDocSnap.exists()) {
+              // University pre-registered them!
+              const studentData = studentDocSnap.data();
+              setIsAdmin(false);
+              setUserRole('student');
+              setTenantId(studentData.tenantId); // Auto-assign to cohort
+            } else {
+              // Standard Free Tier Student
+              setIsAdmin(false);
+              setUserRole('student');
+              setTenantId('public'); 
+            }
+          }
         } catch (error) {
-          console.error("Error checking admin status:", error);
+          console.error("Error checking auth status:", error);
           setIsAdmin(false);
+          setUserRole('student');
+          setTenantId('public');
         }
       } else {
         setIsAdmin(false);
+        setUserRole('student');
+        setTenantId(null);
       }
       
-      setLoading(false);
+      setIsFetchingRole(false); 
+      setLoading(false); 
     });
 
     return unsubscribe;
@@ -41,7 +73,10 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
-    isAdmin
+    isAdmin,
+    userRole,
+    tenantId,
+    isFetchingRole
   };
 
   return (
