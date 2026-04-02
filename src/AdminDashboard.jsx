@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Users, FileText, TrendingDown, AlertTriangle, Activity, CheckCircle, XCircle, Rocket, Target, BarChart3, UploadCloud, Building2, Mail, Check, X, ShieldCheck, LogOut } from 'lucide-react';
+import { Users, FileText, TrendingDown, AlertTriangle, Activity, CheckCircle, XCircle, Rocket, Target, BarChart3, UploadCloud, Building2, Mail, Check, X, ShieldCheck, LogOut, Briefcase, Globe } from 'lucide-react';
 import { auth, db } from './firebase';
 import { collection, query, orderBy, onSnapshot, writeBatch, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function AdminDashboard() {
-  const [currentView, setCurrentView] = useState('analytics'); // 'analytics' or 'partners'
-  
+  const [currentView, setCurrentView] = useState('analytics'); // 'analytics', 'partners', or 'employers'
+
   const [scans, setScans] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [employerApps, setEmployerApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [revealedEmails, setRevealedEmails] = useState(new Set());
 
@@ -38,7 +39,7 @@ export default function AdminDashboard() {
         const totalScore = scanData.reduce((acc, curr) => acc + (curr.roleMatchScore || curr.score || 0), 0);
         const totalMarketProb = scanData.reduce((acc, curr) => acc + (curr.marketProbability || 0), 0);
         const passedCount = scanData.filter(s => (s.roleMatchScore || s.score) >= 60).length;
-        
+
         const skillCounts = {};
         const recommendedCounts = {};
 
@@ -54,42 +55,84 @@ export default function AdminDashboard() {
       }
     });
 
-    // 2. Fetch Partner Applications
+    // 2. Fetch Partner Applications (Universities)
     const qApps = query(collection(db, 'partner_applications'), orderBy('createdAt', 'desc'));
     const unsubApps = onSnapshot(qApps, (snapshot) => {
       const appData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setApplications(appData);
+    });
+
+    // 3. Fetch Employer Applications 
+    const qEmpApps = query(collection(db, 'employer_applications'), orderBy('createdAt', 'desc'));
+    const unsubEmpApps = onSnapshot(qEmpApps, (snapshot) => {
+      const empData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setEmployerApps(empData);
       setLoading(false);
     });
 
-    return () => { unsubScans(); unsubApps(); };
+    return () => { unsubScans(); unsubApps(); unsubEmpApps(); };
   }, []);
 
-  // --- PARTNER APPROVAL LOGIC ---
-  const handleApprove = async (app) => {
+  // --- UNIVERSITY APPROVAL LOGIC ---
+  const handleApprovePartner = async (app) => {
     const finalTenantId = assignTenantId[app.id]?.trim().toUpperCase();
     if (!finalTenantId) { alert("Please assign a strictly formatted Tenant ID (e.g., HARVARD-2026)."); return; }
     setProcessingId(app.id);
     try {
-      await setDoc(doc(db, 'admins', app.email), { role: 'partner', tenantId: finalTenantId, universityName: app.universityName, contactName: app.contactName, createdAt: serverTimestamp() });
+      await setDoc(doc(db, 'admins', app.email.toLowerCase()), { role: 'partner', tenantId: finalTenantId, universityName: app.universityName, contactName: app.contactName, createdAt: serverTimestamp() });
       await updateDoc(doc(db, 'partner_applications', app.id), { status: 'approved', tenantId: finalTenantId, approvedAt: serverTimestamp() });
       setAssignTenantId(prev => ({ ...prev, [app.id]: '' }));
-    } catch (error) { console.error("Approval failed:", error); alert("Database error during approval."); } 
+    } catch (error) { console.error("Approval failed:", error); alert("Database error during approval."); }
     finally { setProcessingId(null); }
   };
 
-  const handleReject = async (appId) => {
-    if(!window.confirm("Are you sure you want to reject this application?")) return;
+  const handleRejectPartner = async (appId) => {
+    if (!window.confirm("Are you sure you want to reject this university?")) return;
     setProcessingId(appId);
-    try { await updateDoc(doc(db, 'partner_applications', appId), { status: 'rejected', rejectedAt: serverTimestamp() }); } 
-    catch (error) { console.error("Rejection failed:", error); } 
+    try { await updateDoc(doc(db, 'partner_applications', appId), { status: 'rejected', rejectedAt: serverTimestamp() }); }
+    catch (error) { console.error("Rejection failed:", error); }
     finally { setProcessingId(null); }
   };
+
+  // --- EMPLOYER APPROVAL LOGIC ---
+  const handleApproveEmployer = async (app) => {
+    if (!window.confirm(`Approve ${app.companyName} for Employer Access?`)) return;
+    setProcessingId(app.id);
+    try {
+      // Create their admin profile with 'employer' role to allow login
+      await setDoc(doc(db, 'admins', app.email.toLowerCase()), {
+        role: 'employer',
+        companyName: app.companyName,
+        contactName: app.contactName,
+        industry: app.industry,
+        createdAt: serverTimestamp()
+      });
+      // Mark application as approved
+      await updateDoc(doc(db, 'employer_applications', app.id), {
+        status: 'approved',
+        approvedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Employer Approval failed:", error);
+      alert("Database error during approval.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectEmployer = async (appId) => {
+    if (!window.confirm("Are you sure you want to reject this employer?")) return;
+    setProcessingId(appId);
+    try { await updateDoc(doc(db, 'employer_applications', appId), { status: 'rejected', rejectedAt: serverTimestamp() }); }
+    catch (error) { console.error("Rejection failed:", error); }
+    finally { setProcessingId(null); }
+  };
+
 
   // --- CSV BULK UPLOAD LOGIC ---
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (file && file.type === "text/csv") { setCsvFile(file); setUploadMessage({ text: '', type: '' }); } 
+    if (file && file.type === "text/csv") { setCsvFile(file); setUploadMessage({ text: '', type: '' }); }
     else { setCsvFile(null); setUploadMessage({ text: 'Please upload a valid .csv file.', type: 'error' }); }
   };
 
@@ -118,14 +161,14 @@ export default function AdminDashboard() {
         await batch.commit();
         setUploadMessage({ text: `Success! ${emailsToUpload.slice(0, 500).length} students onboarded to ${finalTenantId}.`, type: 'success' });
         setCsvFile(null); setTargetTenantId('');
-      } catch (error) { setUploadMessage({ text: 'Database error. Check console.', type: 'error' }); } 
+      } catch (error) { setUploadMessage({ text: 'Database error. Check console.', type: 'error' }); }
       finally { setIsUploading(false); }
     };
     reader.readAsText(csvFile);
   };
 
   const getScoreColor = (score) => { if (score >= 75) return 'text-emerald-400'; if (score >= 45) return 'text-amber-400'; return 'text-rose-500'; };
-  
+
   const maskEmail = (email) => {
     if (!email) return "Unknown";
     const parts = email.split("@");
@@ -139,8 +182,8 @@ export default function AdminDashboard() {
   const handleDoubleClickEmail = (id) => {
     setRevealedEmails(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) newSet.delete(id); 
-      else newSet.add(id); 
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
       return newSet;
     });
   };
@@ -150,9 +193,13 @@ export default function AdminDashboard() {
   const pendingApps = applications.filter(app => app.status === 'pending');
   const processedApps = applications.filter(app => app.status !== 'pending');
 
+  const pendingEmpApps = employerApps.filter(app => app.status === 'pending');
+  const processedEmpApps = employerApps.filter(app => app.status !== 'pending');
+
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-200 p-8 font-sans">
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 8px; }
@@ -161,12 +208,12 @@ export default function AdminDashboard() {
       `}} />
 
       <div className="max-w-[1600px] mx-auto">
-        
+
         {/* ========================================= */}
         {/* REDESIGNED TOP NAVIGATION & HEADER        */}
         {/* ========================================= */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 border-b border-slate-800/80 pb-6 gap-6 relative">
-          
+
           {/* Title Area */}
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-3">
@@ -175,24 +222,31 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-extrabold text-white tracking-tight">Global Command Center</h1>
             <p className="text-slate-400 mt-2 text-sm">Real-time ATS performance and enterprise partner management.</p>
           </div>
-          
+
           {/* Controls Area */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
-            
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto overflow-x-auto">
+
             {/* Segmented View Toggle */}
-            <div className="flex items-center bg-[#0b1120] p-1.5 rounded-xl border border-slate-800 shadow-inner w-full sm:w-auto">
-              <button 
-                onClick={() => setCurrentView('analytics')} 
+            <div className="flex items-center bg-[#0b1120] p-1.5 rounded-xl border border-slate-800 shadow-inner w-full sm:w-auto whitespace-nowrap">
+              <button
+                onClick={() => setCurrentView('analytics')}
                 className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${currentView === 'analytics' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <Activity size={16} /> ATS Analytics
               </button>
-              <button 
-                onClick={() => setCurrentView('partners')} 
+              <button
+                onClick={() => setCurrentView('partners')}
                 className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${currentView === 'partners' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                <Building2 size={16} /> Partner Mgmt
+                <Building2 size={16} /> Uni Partners
                 {pendingApps.length > 0 && <span className="bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm">{pendingApps.length}</span>}
+              </button>
+              <button
+                onClick={() => setCurrentView('employers')}
+                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${currentView === 'employers' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              >
+                <Briefcase size={16} /> Employers
+                {pendingEmpApps.length > 0 && <span className="bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm">{pendingEmpApps.length}</span>}
               </button>
             </div>
 
@@ -200,8 +254,8 @@ export default function AdminDashboard() {
             <div className="w-px h-8 bg-slate-800 hidden sm:block"></div>
 
             {/* Separated Sign Out Button */}
-            <button 
-              onClick={() => auth.signOut()} 
+            <button
+              onClick={() => auth.signOut()}
               className="w-full sm:w-auto px-5 py-2.5 bg-slate-800/50 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-slate-700/50 hover:border-rose-500/30 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
             >
               <LogOut size={16} /> Sign Out
@@ -260,7 +314,7 @@ export default function AdminDashboard() {
               {/* RIGHT PANEL: LIVE SCAN FEED (9 COLUMNS) */}
               <div className="xl:col-span-9 bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl flex flex-col">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Activity className="text-indigo-400" /> Live Scan Feed</h3>
-                
+
                 <div className="overflow-x-auto overflow-y-auto max-h-[750px] custom-scrollbar pr-2 rounded-xl">
                   <table className="w-full text-left table-fixed border-separate border-spacing-0 relative">
                     <thead className="sticky top-0 z-20">
@@ -276,7 +330,7 @@ export default function AdminDashboard() {
                         <th className="py-4 pr-4 font-bold w-[14%] rounded-tr-lg border-b border-slate-700">Upskill Path</th>
                       </tr>
                     </thead>
-                    
+
                     <tbody>
                       {scans.map((scan) => {
                         const actualScore = scan.roleMatchScore || scan.score || 0;
@@ -285,10 +339,10 @@ export default function AdminDashboard() {
 
                         return (
                           <tr key={scan.id} className="hover:bg-slate-800/30 transition-colors group">
-                            
+
                             {/* COLUMN 1: STUDENT / TIME (With Double Click) */}
                             <td className="py-4 pl-4 pr-2 border-b border-slate-800/50">
-                              <div 
+                              <div
                                 className="font-medium text-slate-200 truncate cursor-pointer select-none hover:text-indigo-300 transition-colors"
                                 onDoubleClick={() => handleDoubleClickEmail(scan.id)}
                                 title="Double click to reveal/hide email"
@@ -296,7 +350,7 @@ export default function AdminDashboard() {
                                 {isEmailRevealed ? scan.userEmail : maskEmail(scan.userEmail)}
                               </div>
                               <div className="text-[10px] text-slate-500 mt-1 group-hover:text-slate-400 transition-colors">
-                                {scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit' }) : 'Just now'}
+                                {scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                               </div>
                             </td>
 
@@ -357,7 +411,7 @@ export default function AdminDashboard() {
                                 )) : <span className="text-[11px] text-slate-500">N/A</span>}
                               </div>
                             </td>
-                            
+
                           </tr>
                         );
                       })}
@@ -371,14 +425,14 @@ export default function AdminDashboard() {
         )}
 
         {/* ========================================= */}
-        {/* VIEW 2: PARTNER MANAGEMENT */}
+        {/* VIEW 2: PARTNER MANAGEMENT (UNIVERSITIES) */}
         {/* ========================================= */}
         {currentView === 'partners' && (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-fade-in-up">
-            
+
             {/* LEFT SIDE: PENDING APPLICATIONS & HISTORY */}
             <div className="xl:col-span-8 space-y-6">
-              
+
               {/* PENDING APPROVALS */}
               <div className="bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Users className="text-indigo-400" /> Action Required: Pending Partners</h3>
@@ -393,14 +447,14 @@ export default function AdminDashboard() {
                       <div key={app.id} className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
                         <div>
                           <h4 className="text-lg font-bold text-white flex items-center gap-2">{app.universityName} <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-1 rounded uppercase tracking-wider">Awaiting Review</span></h4>
-                          <div className="flex flex-col sm:flex-row gap-4 mt-2 text-sm text-slate-400"><span className="flex items-center gap-1.5"><Mail size={14}/> {app.email}</span><span className="flex items-center gap-1.5"><Users size={14}/> {app.contactName}</span></div>
+                          <div className="flex flex-col sm:flex-row gap-4 mt-2 text-sm text-slate-400"><span className="flex items-center gap-1.5"><Mail size={14} /> {app.email}</span><span className="flex items-center gap-1.5"><Users size={14} /> {app.contactName}</span></div>
                           <p className="text-xs text-slate-500 mt-2">Applied: {app.createdAt ? new Date(app.createdAt.toDate()).toLocaleDateString() : 'Recently'}</p>
                         </div>
                         <div className="w-full md:w-auto flex flex-col gap-3 min-w-[250px]">
-                          <input type="text" placeholder="Assign Tenant ID (e.g. SRM-26)" value={assignTenantId[app.id] || ''} onChange={(e) => setAssignTenantId({...assignTenantId, [app.id]: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-white outline-none uppercase" />
+                          <input type="text" placeholder="Assign Tenant ID (e.g. SRM-26)" value={assignTenantId[app.id] || ''} onChange={(e) => setAssignTenantId({ ...assignTenantId, [app.id]: e.target.value.toUpperCase() })} className="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-white outline-none uppercase" />
                           <div className="flex gap-2">
-                            <button onClick={() => handleReject(app.id)} disabled={processingId === app.id} className="flex-1 px-3 py-2 bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-slate-700 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1"><X size={16} /> Reject</button>
-                            <button onClick={() => handleApprove(app)} disabled={processingId === app.id} className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1 disabled:opacity-50">{processingId === app.id ? <Activity size={16} className="animate-spin" /> : <><Check size={16} /> Approve</>}</button>
+                            <button onClick={() => handleRejectPartner(app.id)} disabled={processingId === app.id} className="flex-1 px-3 py-2 bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-slate-700 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1"><X size={16} /> Reject</button>
+                            <button onClick={() => handleApprovePartner(app)} disabled={processingId === app.id} className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1 disabled:opacity-50">{processingId === app.id ? <Activity size={16} className="animate-spin" /> : <><Check size={16} /> Approve</>}</button>
                           </div>
                         </div>
                       </div>
@@ -413,7 +467,7 @@ export default function AdminDashboard() {
               <div className="bg-[#1e293b]/20 border border-slate-800/50 p-6 rounded-2xl">
                 <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider">Recently Processed</h3>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
-                  {processedApps.slice(0,10).map(app => (
+                  {processedApps.slice(0, 10).map(app => (
                     <div key={app.id} className="flex justify-between items-center p-3 bg-slate-800/30 rounded-lg border border-slate-800">
                       <div><p className="text-sm font-medium text-slate-300">{app.universityName}</p><p className="text-xs text-slate-500">{app.email}</p></div>
                       <div className="text-right">
@@ -436,13 +490,77 @@ export default function AdminDashboard() {
                   <input type="text" value={targetTenantId} onChange={(e) => setTargetTenantId(e.target.value)} placeholder="Target Cohort (e.g. VIT)" className="w-full bg-slate-900/50 border border-slate-700 focus:border-indigo-500 rounded-lg px-4 py-3 text-sm text-white placeholder-slate-500 outline-none uppercase" />
                   <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-all ${csvFile ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-700 bg-slate-800/50 hover:border-indigo-500/30'}`}>
                     <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
-                    {csvFile ? <div className="text-center"><CheckCircle className="text-emerald-500 w-8 h-8 mx-auto mb-2"/><p className="text-emerald-400 text-xs font-medium truncate w-48">{csvFile.name}</p></div> : <div className="text-center"><UploadCloud className="text-slate-500 w-8 h-8 mx-auto mb-2"/><p className="text-slate-400 text-xs font-medium">Click to attach .CSV</p></div>}
+                    {csvFile ? <div className="text-center"><CheckCircle className="text-emerald-500 w-8 h-8 mx-auto mb-2" /><p className="text-emerald-400 text-xs font-medium truncate w-48">{csvFile.name}</p></div> : <div className="text-center"><UploadCloud className="text-slate-500 w-8 h-8 mx-auto mb-2" /><p className="text-slate-400 text-xs font-medium">Click to attach .CSV</p></div>}
                   </label>
                   {uploadMessage.text && <div className={`text-[11px] font-medium p-3 rounded-lg ${uploadMessage.type === 'error' ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20' : uploadMessage.type === 'success' ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-blue-400 bg-blue-500/10'}`}>{uploadMessage.text}</div>}
                   <button onClick={processBulkUpload} disabled={isUploading || !csvFile || !targetTenantId} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/25 disabled:opacity-50 flex items-center justify-center gap-2">{isUploading ? <Activity size={18} className="animate-spin" /> : 'Provision CSV Accounts'}</button>
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ========================================= */}
+        {/* VIEW 3: EMPLOYER MANAGEMENT (NEW)         */}
+        {/* ========================================= */}
+        {currentView === 'employers' && (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-fade-in-up">
+
+            {/* PENDING APPROVALS */}
+            <div className="xl:col-span-8 bg-[#1e293b]/40 border border-slate-800 p-6 rounded-2xl">
+              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Briefcase className="text-emerald-400" /> Action Required: Pending Employers</h3>
+              {pendingEmpApps.length === 0 ? (
+                <div className="text-center py-12 bg-slate-800/30 rounded-xl border border-slate-700/50 border-dashed">
+                  <CheckCircle className="text-emerald-500/50 w-12 h-12 mx-auto mb-3" />
+                  <p className="text-slate-400 font-medium">No pending employer applications.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingEmpApps.map(app => (
+                    <div key={app.id} className="bg-slate-800/50 border border-emerald-500/20 rounded-xl p-5 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+                      <div>
+                        <h4 className="text-lg font-bold text-white flex items-center gap-2">{app.companyName} <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-1 rounded uppercase tracking-wider">Awaiting Review</span></h4>
+                        <div className="flex flex-col sm:flex-row gap-4 mt-2 text-sm text-slate-400">
+                          <span className="flex items-center gap-1.5"><Mail size={14} /> {app.email}</span>
+                          <span className="flex items-center gap-1.5"><Users size={14} /> {app.contactName}</span>
+                          <span className="flex items-center gap-1.5"><Globe size={14} /> {app.industry}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 w-full md:w-auto">
+                        <button onClick={() => handleRejectEmployer(app.id)} disabled={processingId === app.id} className="flex-1 px-4 py-2 bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-slate-700 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1"><X size={16} /> Reject</button>
+                        <button onClick={() => handleApproveEmployer(app)} disabled={processingId === app.id} className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1 disabled:opacity-50">{processingId === app.id ? <Activity size={16} className="animate-spin" /> : <><Check size={16} /> Approve</>}</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* RECENTLY PROCESSED HISTORY */}
+            <div className="xl:col-span-4 bg-[#1e293b]/20 border border-slate-800/50 p-6 rounded-2xl h-fit">
+              <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider">Recently Processed Employers</h3>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                {processedEmpApps.map(app => (
+                  <div key={app.id} className="flex justify-between items-center p-3 bg-slate-800/30 rounded-lg border border-slate-800">
+                    <div>
+                      <p className="text-sm font-bold text-slate-300 flex items-center gap-2">
+                        <Building2 size={12} className="text-emerald-500" /> {app.companyName}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">{app.email}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      {app.status === 'approved' ? (
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">APPROVED</span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20">REJECTED</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {processedEmpApps.length === 0 && <p className="text-xs text-slate-500 text-center py-4">No history yet.</p>}
+              </div>
+            </div>
+
           </div>
         )}
 
