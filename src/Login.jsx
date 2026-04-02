@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { auth, db } from './firebase';
 import { 
   signInWithEmailAndPassword, 
@@ -7,7 +7,7 @@ import {
   GoogleAuthProvider
 } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   Mail, 
   Lock, 
@@ -17,10 +17,11 @@ import {
   XCircle, 
   Activity, 
   Building2, 
-  LogIn, 
   Eye, 
   EyeOff, 
-  Briefcase 
+  Briefcase,
+  User,
+  ArrowLeft
 } from 'lucide-react';
 
 export default function Login() {
@@ -128,6 +129,7 @@ export default function Login() {
         setPartnerStep(2); 
       }
     } catch (error) {
+      console.error(error);
       setPartnerStep(2); 
     } finally {
       setLoading(false);
@@ -181,31 +183,80 @@ export default function Login() {
     </div>
   );
 
+  const getSliderTranslate = () => {
+    if (activeTab === 'student') return 'translate-x-0';
+    if (activeTab === 'partner') return 'translate-x-[100%]';
+    if (activeTab === 'employer') return 'translate-x-[200%]';
+  };
+
+  const getSliderColor = () => {
+    if (activeTab === 'student') return 'bg-indigo-500/20 border-indigo-500/40 shadow-[0_0_15px_rgba(99,102,241,0.3)]';
+    if (activeTab === 'partner') return 'bg-amber-500/20 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.3)]';
+    if (activeTab === 'employer') return 'bg-emerald-500/20 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.3)]';
+  };
+
+  const getGlowColor = () => {
+    if (activeTab === 'student') return 'from-indigo-600/20 to-purple-600/10';
+    if (activeTab === 'partner') return 'from-amber-500/20 to-orange-600/10';
+    if (activeTab === 'employer') return 'from-emerald-600/20 to-teal-600/10';
+  };
+
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 selection:bg-indigo-500/30">
-      <div className="w-full max-w-[420px]">
-        
-        {/* HEADER SECTION */}
-        <div className="text-center mb-8 animate-fade-in">
-          <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl border mb-6 shadow-2xl transition-all duration-500 
-            ${activeTab === 'partner' ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' : 
-              activeTab === 'employer' ? 'bg-amber-500/10 border-amber-500/20 shadow-amber-500/10' : 
-              'bg-indigo-500/10 border-indigo-500/20 shadow-indigo-500/10'}`}>
-            {activeTab === 'partner' && <Building2 className="text-emerald-400 w-8 h-8" />}
-            {activeTab === 'employer' && <Briefcase className="text-amber-400 w-8 h-8" />}
-            {activeTab === 'student' && <LogIn className="text-indigo-400 w-8 h-8" />}
+    <div className="min-h-screen bg-[#04060d] flex flex-col relative selection:bg-indigo-500/30 overflow-hidden">
+      
+      {/* Dynamic Background Glow */}
+      <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b ${getGlowColor()} blur-[150px] rounded-full pointer-events-none transition-colors duration-1000`}></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none"></div>
+
+      {/* Back to Home Button */}
+      <div className="relative z-10 pt-8 px-8">
+        <Link to="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-bold bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+          <ArrowLeft size={16} /> Back to Home
+        </Link>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center p-4 relative z-10">
+        <div className="w-full max-w-[420px]">
+          
+          {/* HEADER SECTION */}
+          <div className="text-center mb-8 animate-fade-in">
+            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl border mb-6 shadow-2xl transition-all duration-500 
+              ${activeTab === 'partner' ? 'bg-amber-500/10 border-amber-500/20 shadow-amber-500/10' : 
+                activeTab === 'employer' ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' : 
+                'bg-indigo-500/10 border-indigo-500/20 shadow-indigo-500/10'}`}>
+              {activeTab === 'partner' && <Building2 className="text-amber-400 w-8 h-8" />}
+              {activeTab === 'employer' && <Briefcase className="text-emerald-400 w-8 h-8" />}
+              {activeTab === 'student' && <User className="text-indigo-400 w-8 h-8" />}
+            </div>
+
+            {/* PILL SWITCHER */}
+            <div className="relative flex items-center p-1.5 bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/10 rounded-full mb-8 mx-auto w-full max-w-[360px] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+              <div className={`absolute top-1.5 bottom-1.5 left-1.5 w-[calc(33.333%-4px)] rounded-full border transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] ${getSliderTranslate()} ${getSliderColor()}`}></div>
+              
+              <button type="button" onClick={() => { setActiveTab('student'); setErrorMsg(''); setPartnerStep(1); }} className={`relative z-10 flex-1 py-1.5 rounded-full text-xs font-bold transition-colors duration-300 flex items-center justify-center gap-1.5 ${activeTab === 'student' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
+                <span className="truncate">Student</span>
+              </button>
+
+              <button type="button" onClick={() => { setActiveTab('partner'); setErrorMsg(''); setPartnerStep(1); }} className={`relative z-10 flex-1 py-1.5 rounded-full text-xs font-bold transition-colors duration-300 flex items-center justify-center gap-1.5 ${activeTab === 'partner' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
+                <span className="truncate">University</span>
+              </button>
+
+              <button type="button" onClick={() => { setActiveTab('employer'); setErrorMsg(''); setPartnerStep(1); }} className={`relative z-10 flex-1 py-1.5 rounded-full text-xs font-bold transition-colors duration-300 flex items-center justify-center gap-1.5 ${activeTab === 'employer' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
+                <span className="truncate">Employer</span>
+              </button>
+            </div>
+
+            <h2 className="text-3xl font-extrabold text-white mb-2 tracking-tight">
+              {activeTab === 'partner' ? 'Enterprise Portal' : 
+               activeTab === 'employer' ? 'Talent Discovery Hub' : 
+               'Student Access'}
+            </h2>
+            <p className="text-slate-400 text-sm px-4">
+              {activeTab === 'partner' ? 'Log in to manage your university partnership.' : 
+               activeTab === 'employer' ? 'Log in to find pre-vetted, high-match candidates.' : 
+               'Log in to run your ATS resume simulations.'}
+            </p>
           </div>
-          <h2 className="text-3xl font-extrabold text-white mb-2 tracking-tight">
-            {activeTab === 'partner' ? 'Enterprise Portal' : 
-             activeTab === 'employer' ? 'Talent Discovery Hub' : 
-             'Student Access'}
-          </h2>
-          <p className="text-slate-400 text-sm">
-            {activeTab === 'partner' ? 'Log in to manage your university partnership.' : 
-             activeTab === 'employer' ? 'Log in to find pre-vetted, high-match candidates.' : 
-             'Log in to run your ATS resume simulations.'}
-          </p>
-        </div>
 
         {/* MAIN CARD */}
         <div className="bg-[#1e293b]/80 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
@@ -249,7 +300,7 @@ export default function Login() {
                       <input 
                         type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)}
                         className={`w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3.5 pl-11 pr-4 text-white outline-none transition-colors 
-                          ${activeTab === 'employer' ? 'focus:border-amber-500' : 'focus:border-emerald-500'}`}
+                          ${activeTab === 'employer' ? 'focus:border-emerald-500' : 'focus:border-amber-500'}`}
                         placeholder={activeTab === 'employer' ? "hr@company.com" : "admin@university.edu"}
                       />
                     </div>
@@ -257,7 +308,7 @@ export default function Login() {
                   <button 
                     type="submit" disabled={loading || !email} 
                     className={`w-full text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg mt-5 transition-all 
-                      ${activeTab === 'employer' ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/25' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25'}`}
+                      ${activeTab === 'employer' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25' : 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/25'}`}
                   >
                     {loading ? <Activity size={18} className="animate-spin" /> : <>Continue <ArrowRight size={18} /></>}
                   </button>
@@ -268,7 +319,7 @@ export default function Login() {
                 <form onSubmit={handlePartnerFinalSubmit} className="animate-fade-in">
                   <div className="flex items-center justify-between bg-slate-900/50 border border-slate-700 p-3 rounded-xl mb-6">
                     <span className="text-sm text-slate-300 truncate max-w-[200px]">{email}</span>
-                    <button type="button" onClick={() => setPartnerStep(1)} className={`text-xs font-bold transition-colors ${activeTab === 'employer' ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300'}`}>Edit</button>
+                    <button type="button" onClick={() => setPartnerStep(1)} className={`text-xs font-bold transition-colors ${activeTab === 'employer' ? 'text-emerald-400 hover:text-emerald-300' : 'text-amber-400 hover:text-amber-300'}`}>Edit</button>
                   </div>
                   <div>
                     <label className="block text-slate-400 text-xs font-bold mb-2 uppercase tracking-wider">Password</label>
@@ -277,7 +328,7 @@ export default function Login() {
                       <input 
                         type={showPassword ? 'text' : 'password'} required autoFocus value={password} onChange={(e) => setPassword(e.target.value)}
                         className={`w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3.5 pl-11 pr-11 text-white outline-none transition-colors 
-                          ${activeTab === 'employer' ? 'focus:border-amber-500' : 'focus:border-emerald-500'}`} 
+                          ${activeTab === 'employer' ? 'focus:border-emerald-500' : 'focus:border-amber-500'}`} 
                         placeholder="••••••••"
                       />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
@@ -288,7 +339,7 @@ export default function Login() {
                   <button 
                     type="submit" disabled={loading || !password} 
                     className={`w-full text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center mt-5 shadow-lg transition-all 
-                      ${activeTab === 'employer' ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/25' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25'}`}
+                      ${activeTab === 'employer' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25' : 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/25'}`}
                   >
                     {loading ? <Activity size={18} className="animate-spin" /> : <><ShieldCheck size={18} className="mr-2"/> Secure Login</>}
                   </button>
@@ -343,32 +394,8 @@ export default function Login() {
             </div>
           )}
         </div>
-
-        {/* --- THREE-WAY SWITCHER MENU --- */}
-        <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mt-8">
-          <button 
-            onClick={() => { setActiveTab('student'); setErrorMsg(''); setPartnerStep(1); }} 
-            className={`text-xs font-bold transition-all px-2 py-1 rounded-md ${activeTab === 'student' ? 'text-indigo-400 bg-indigo-400/10 underline underline-offset-4' : 'text-slate-500 hover:text-slate-300'}`}
-          >
-            Student
-          </button>
-          <span className="text-slate-800 text-lg">·</span>
-          <button 
-            onClick={() => { setActiveTab('partner'); setErrorMsg(''); setPartnerStep(1); }} 
-            className={`text-xs font-bold transition-all px-2 py-1 rounded-md ${activeTab === 'partner' ? 'text-emerald-400 bg-emerald-400/10 underline underline-offset-4' : 'text-slate-500 hover:text-slate-300'}`}
-          >
-            University
-          </button>
-          <span className="text-slate-800 text-lg">·</span>
-          <button 
-            onClick={() => { setActiveTab('employer'); setErrorMsg(''); setPartnerStep(1); }} 
-            className={`text-xs font-bold transition-all px-2 py-1 rounded-md ${activeTab === 'employer' ? 'text-amber-400 bg-amber-400/10 underline underline-offset-4' : 'text-slate-500 hover:text-slate-300'}`}
-          >
-            Talent Hub
-          </button>
-        </div>
-
       </div>
+    </div>
     </div>
   );
 }
