@@ -62,9 +62,12 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && isSuperAdmin();
     }    
 
+    // --- EMPLOYER APPLICATIONS ---
     match /employer_applications/{appId} {
+      // Anyone can submit an application
       allow create: if true; 
-      allow read: if true; 
+      // SECURED: Only Super Admins can view the applications list
+      allow read: if request.auth != null && isSuperAdmin(); 
       allow update, delete: if request.auth != null && isSuperAdmin();
     }
 
