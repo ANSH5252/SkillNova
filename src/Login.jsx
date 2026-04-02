@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { auth, db } from './firebase';
 import { 
   signInWithEmailAndPassword, 
@@ -44,6 +44,42 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // --- PARALLAX GRID LOGIC ---
+  const gridRef = useRef(null);
+  const mousePos = useRef({ x: 0, y: 0 });
+  const timeOffset = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    let animationFrameId;
+
+    const handleMouseMove = (e) => {
+      mousePos.current.x = e.clientX - window.innerWidth / 2;
+      mousePos.current.y = e.clientY - window.innerHeight / 2;
+    };
+
+    const animate = () => {
+      if (gridRef.current) {
+        timeOffset.current.x += 0.4;
+        timeOffset.current.y -= 0.4;
+
+        const bgX = timeOffset.current.x - (mousePos.current.x * 0.08);
+        const bgY = timeOffset.current.y - (mousePos.current.y * 0.08);
+
+        // Apply to both layers of the dual grid
+        gridRef.current.style.backgroundPosition = `${bgX}px ${bgY}px, ${bgX}px ${bgY}px, ${bgX}px ${bgY}px, ${bgX}px ${bgY}px`;
+      }
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    animate(); 
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
 
   // --- CORE ROUTING ENGINE ---
   const checkAdminAndRoute = async (userEmail) => {
@@ -203,10 +239,23 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-[#04060d] flex flex-col relative selection:bg-indigo-500/30 overflow-hidden">
+      <style>
+        {`
+          .bg-grid-pattern {
+            background-image: 
+              linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px),
+              linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+            transition: background-position 0.1s ease-out;
+          }
+        `}
+      </style>
       
       {/* Dynamic Background Glow */}
+      <div ref={gridRef} className="absolute inset-0 bg-grid-pattern [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)] pointer-events-none"></div>
       <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b ${getGlowColor()} blur-[150px] rounded-full pointer-events-none transition-colors duration-1000`}></div>
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none"></div>
 
       {/* Back to Home Button */}
       <div className="relative z-10 pt-8 px-8">
