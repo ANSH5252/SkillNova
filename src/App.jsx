@@ -8,6 +8,7 @@ import LandingPage from './LandingPage';
 import AdminDashboard from './AdminDashboard';
 import PartnerDashboard from './PartnerDashboard';
 import EmployerDashboard from './EmployerDashboard'; 
+import EmployerApply from './EmployerApply';
 import StudentDashboard from './StudentDashboard';
 import PartnerApply from './PartnerApply';
 import Login from './Login';
@@ -20,6 +21,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/apply" element={<PartnerApply />} />
+          <Route path="/employer-apply" element={<EmployerApply />} />
           
           <Route path="/admin" element={
             <ProtectedRoute requireAdmin={true}>
