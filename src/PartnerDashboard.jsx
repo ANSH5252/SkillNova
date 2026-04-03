@@ -271,13 +271,13 @@ export default function PartnerDashboard() {
         <AlertCircle className="text-rose-500 w-16 h-16 mb-4" />
         <h2 className="text-2xl font-bold text-white mb-2">Dashboard Error</h2>
         <p className="text-slate-400 text-center max-w-md mb-6">{errorMsg}</p>
-        <button onClick={() => auth.signOut()} className="px-6 py-2 bg-indigo-600 text-white rounded-lg">Sign Out</button>
+        <button onClick={() => auth.signOut()} className="px-6 py-2 bg-amber-600 text-white rounded-lg">Sign Out</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#04060d] text-slate-200 font-sans selection:bg-indigo-500/30 overflow-x-hidden flex flex-col relative">
+    <div className="min-h-screen bg-[#04060d] text-slate-200 font-sans selection:bg-amber-500/30 overflow-x-hidden flex flex-col relative">
       <style>
         {`
           @keyframes splashFade {
@@ -325,20 +325,20 @@ export default function PartnerDashboard() {
 
       <div className="relative z-10 flex-grow p-8 animate-fade-in-up delay-100">
         <div ref={gridRef} className="fixed inset-0 bg-grid-pattern-slate [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)] pointer-events-none z-0"></div>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[600px] bg-gradient-to-b from-indigo-500/10 to-transparent blur-[120px] rounded-full pointer-events-none z-0 transition-colors duration-1000"></div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[600px] bg-gradient-to-b from-amber-500/10 to-transparent blur-[120px] rounded-full pointer-events-none z-0 transition-colors duration-1000"></div>
       <div className="max-w-7xl mx-auto">
         
         {/* TOP NAVIGATION & BRANDING */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 border-b border-slate-800 pb-6 gap-6">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <SkillNovaLogo className="w-8 h-8 drop-shadow-[0_0_12px_rgba(99,102,241,0.5)]" />
+              <SkillNovaLogo className="w-8 h-8 drop-shadow-[0_0_12px_rgba(245,158,11,0.5)]" />
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider">
                 Enterprise Partner Portal
               </div>
               {isPremium ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold uppercase tracking-wider">
-                  <Crown size={14} className="text-indigo-400"/> {isTester ? 'QA Bypass Active' : 'Premium Active'}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider">
+                  <Crown size={14} className="text-amber-400"/> {isTester ? 'QA Bypass Active' : 'Premium Active'}
                 </div>
               ) : (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400 text-xs font-bold uppercase tracking-wider">
@@ -348,7 +348,7 @@ export default function PartnerDashboard() {
             </div>
             
             <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter flex items-center gap-3">
-              Cohort Intelligence <span className="text-slate-600 font-light">/</span> <span className="text-transparent bg-clip-text bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 uppercase">{tenantId || 'Unknown'}</span>
+              Cohort Intelligence <span className="text-slate-600 font-light">/</span> <span className="text-transparent bg-clip-text bg-gradient-to-br from-amber-300 via-orange-400 to-rose-400 uppercase">{tenantId || 'Unknown'}</span>
             </h1>
             <p className="text-slate-400 mt-2 text-sm">Real-time curriculum alignment and placement probability for your students.</p>
           </div>
@@ -356,7 +356,7 @@ export default function PartnerDashboard() {
             {/* ADD STUDENTS BUTTON (GATED) */}
             <button 
               onClick={() => isPremium ? setShowUploadModal(true) : setShowUpgradeModal(true)}
-              className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-sm font-bold transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)] flex items-center gap-2 hover:scale-105 active:scale-95"
+              className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-sm font-bold transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] flex items-center gap-2 hover:scale-105 active:scale-95"
             >
               {!isPremium ? <Lock size={16} className="opacity-70" /> : <UploadCloud size={18} />}
               Add Students
@@ -379,7 +379,7 @@ export default function PartnerDashboard() {
         
         {/* PREMIUM UPGRADE BANNER (Free Tier Only) */}
         {!isPremium && (
-          <div className="mb-12 p-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-8 hover:scale-[1.01] shadow-[0_0_50px_rgba(99,102,241,0.2)] border border-white/20 transition-all duration-500 animate-fade-in relative overflow-hidden group">
+          <div className="mb-12 p-8 bg-gradient-to-r from-amber-500 to-orange-600 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-8 hover:scale-[1.01] shadow-[0_0_50px_rgba(245,158,11,0.2)] border border-white/20 transition-all duration-500 animate-fade-in relative overflow-hidden group">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAzNHYtNGgtdjRoLTh2NGgtdjRoLTh2NGgtdjRoLTh2NGgtdjRoOHY0aDR2NGg4djRoNHY0aDh2NGg0di00aDR2LTRoNHYtNGg0di00aDR2LTRoNHYtNGgtNHYtNGgtNHYtNGgtNHYtNGgtOHptLTggMTR2LTRoLTh2NGg4em0tMTYtOHYtNGgtOHY0aDh6IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz48L2c+PC9zdmc+')] opacity-30"></div>
             <div className="flex items-center gap-6 relative z-10">
               <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-inner border border-white/20 group-hover:rotate-12 transition-transform duration-500">
@@ -387,12 +387,12 @@ export default function PartnerDashboard() {
               </div>
               <div>
                 <h3 className="text-2xl font-black text-white tracking-tighter">Scale your cohort with Premium</h3>
-                <p className="text-indigo-100 font-medium opacity-80">Unlock bulk onboarding, deep analytics, and advanced placement tracking.</p>
+                <p className="text-amber-100 font-medium opacity-80">Unlock bulk onboarding, deep analytics, and advanced placement tracking.</p>
               </div>
             </div>
             <button 
               onClick={() => setShowUpgradeModal(true)}
-              className="relative z-10 px-8 py-4 bg-white text-indigo-600 font-black rounded-2xl hover:bg-slate-100 transition-all shadow-xl whitespace-nowrap hover:scale-105 active:scale-95 uppercase tracking-widest text-sm"
+              className="relative z-10 px-8 py-4 bg-white text-orange-600 font-black rounded-2xl hover:bg-slate-100 transition-all shadow-xl whitespace-nowrap hover:scale-105 active:scale-95 uppercase tracking-widest text-sm"
             >
               Explore Enterprise
             </button>
@@ -401,9 +401,9 @@ export default function PartnerDashboard() {
 
         {/* METRICS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-[#0a0f1c]/60 backdrop-blur-2xl border border-white/10 p-6 rounded-3xl flex justify-between items-center transition-all duration-500 group hover:scale-105 hover:border-indigo-500/50 hover:shadow-[0_0_40px_rgba(99,102,241,0.1)]">
+          <div className="bg-[#0a0f1c]/60 backdrop-blur-2xl border border-white/10 p-6 rounded-3xl flex justify-between items-center transition-all duration-500 group hover:scale-105 hover:border-amber-500/50 hover:shadow-[0_0_40px_rgba(245,158,11,0.1)]">
             <div><p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Active Students</p><h4 className="text-4xl font-black text-white tracking-tighter">{stats.uniqueStudents}</h4></div>
-            <div className="bg-indigo-500/10 p-4 rounded-2xl border border-indigo-500/20 transition-all duration-500 group-hover:bg-indigo-500/20 group-hover:-translate-y-1 shadow-inner"><Users className="text-indigo-400" size={24} /></div>
+            <div className="bg-amber-500/10 p-4 rounded-2xl border border-amber-500/20 transition-all duration-500 group-hover:bg-amber-500/20 group-hover:-translate-y-1 shadow-inner"><Users className="text-amber-400" size={24} /></div>
           </div>
 
           <div className="bg-[#0a0f1c]/60 backdrop-blur-2xl border border-white/10 p-6 rounded-3xl flex justify-between items-center transition-all duration-500 group hover:scale-105 hover:border-purple-500/50 hover:shadow-[0_0_40px_rgba(168,85,247,0.1)]">
@@ -420,7 +420,7 @@ export default function PartnerDashboard() {
             <div className={`p-4 rounded-2xl border transition-all duration-500 shadow-inner ${!isPremium ? 'bg-white/5 border-white/10' : 'bg-emerald-500/10 border-emerald-500/20 group-hover:bg-emerald-500/20 group-hover:-translate-y-1'}`}>
               <Target className={!isPremium ? 'text-slate-500' : 'text-emerald-400'} size={24} />
             </div>
-            {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Lock className="text-indigo-400 group-hover:scale-110 transition-transform drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]" size={32}/></div>}
+            {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Lock className="text-amber-400 group-hover:scale-110 transition-transform drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" size={32}/></div>}
           </div>
 
           {/* GATED METRIC: PLACEMENT */}
@@ -432,20 +432,20 @@ export default function PartnerDashboard() {
             <div className={`p-4 rounded-2xl border transition-all duration-500 shadow-inner ${!isPremium ? 'bg-white/5 border-white/10' : 'bg-blue-500/10 border-blue-500/20 group-hover:bg-blue-500/20 group-hover:-translate-y-1'}`}>
               <TrendingUp className={!isPremium ? 'text-slate-500' : 'text-blue-400'} size={24} />
             </div>
-            {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Lock className="text-indigo-400 group-hover:scale-110 transition-transform drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]" size={32}/></div>}
+            {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Lock className="text-amber-400 group-hover:scale-110 transition-transform drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" size={32}/></div>}
           </div>
         </div>
 
         {/* EXTRA INSIGHTS CARDS (Top Roles & At-Risk) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-          <div className={`bg-[#0a0f1c]/60 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl relative overflow-hidden group cursor-pointer transition-all duration-500 ${isPremium ? 'hover:scale-[1.02] hover:border-indigo-500/50 hover:shadow-[0_0_40px_rgba(99,102,241,0.1)]' : 'hover:scale-[1.01] hover:border-white/5'}`} onClick={() => !isPremium && setShowUpgradeModal(true)}>
+          <div className={`bg-[#0a0f1c]/60 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl relative overflow-hidden group cursor-pointer transition-all duration-500 ${isPremium ? 'hover:scale-[1.02] hover:border-amber-500/50 hover:shadow-[0_0_40px_rgba(245,158,11,0.1)]' : 'hover:scale-[1.01] hover:border-white/5'}`} onClick={() => !isPremium && setShowUpgradeModal(true)}>
             <div className={`transition-all duration-500 ${!isPremium ? 'blur-md opacity-20' : ''}`}>
-              <h3 className="text-xl font-black text-white mb-6 flex items-center gap-3 tracking-tighter uppercase"><Briefcase className="text-indigo-400" size={24} /> Top Targeted Roles</h3>
+              <h3 className="text-xl font-black text-white mb-6 flex items-center gap-3 tracking-tighter uppercase"><Briefcase className="text-amber-400" size={24} /> Top Targeted Roles</h3>
               <div className="grid grid-cols-1 gap-4">
                 {stats.topRoles.length > 0 ? stats.topRoles.map((role, idx) => (
                   <div key={idx} className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-all duration-300">
                     <span className="text-sm font-bold text-slate-200 truncate max-w-[70%] tracking-tight">{role.name}</span>
-                    <span className="text-xs font-black text-indigo-400 bg-indigo-400/10 px-3 py-1 rounded-full">{role.count} <span className="hidden sm:inline">Students</span></span>
+                    <span className="text-xs font-black text-amber-400 bg-indigo-400/10 px-3 py-1 rounded-full">{role.count} <span className="hidden sm:inline">Students</span></span>
                   </div>
                 )) : (
                   <div className="text-slate-500 text-sm py-4 italic">No role data available yet.</div>
@@ -454,10 +454,10 @@ export default function PartnerDashboard() {
             </div>
             {!isPremium && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/10">
-                <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
-                  <Lock className="text-indigo-400 w-8 h-8" />
+                <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                  <Lock className="text-amber-400 w-8 h-8" />
                 </div>
-                <span className="text-xs font-black text-indigo-300 uppercase tracking-widest bg-indigo-400/10 px-4 py-1.5 rounded-full backdrop-blur-md">Premium Insights Locked</span>
+                <span className="text-xs font-black text-amber-300 uppercase tracking-widest bg-indigo-400/10 px-4 py-1.5 rounded-full backdrop-blur-md">Premium Insights Locked</span>
               </div>
             )}
           </div>
@@ -474,7 +474,7 @@ export default function PartnerDashboard() {
                 {isPremium && (
                   <button 
                     onClick={() => setStatusFilter('fail')}
-                    className="text-xs font-black text-indigo-400 hover:text-white uppercase tracking-widest flex items-center gap-2 group/btn"
+                    className="text-xs font-black text-amber-400 hover:text-white uppercase tracking-widest flex items-center gap-2 group/btn"
                   >
                     View Roster <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform"/>
                   </button>
@@ -527,12 +527,12 @@ export default function PartnerDashboard() {
               {/* PAYWALL OVERLAY */}
               {!isPremium && (
                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/20 backdrop-blur-[4px] border border-white/10 p-8 text-center group cursor-pointer hover:bg-black/40 transition-all duration-500" onClick={() => setShowUpgradeModal(true)}>
-                  <div className="w-20 h-20 bg-indigo-500/20 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(99,102,241,0.3)] group-hover:scale-110 transition-transform border border-indigo-500/30">
-                    <Lock className="text-indigo-400 w-10 h-10" />
+                  <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(245,158,11,0.3)] group-hover:scale-110 transition-transform border border-amber-500/30">
+                    <Lock className="text-amber-400 w-10 h-10" />
                   </div>
                   <h4 className="text-2xl font-black text-white mb-3 tracking-tighter uppercase">Enterprise Only</h4>
                   <p className="text-sm font-medium text-slate-300 mb-8 leading-relaxed max-w-[240px]">Upgrade your cohort to SkillNova Enterprise to reveal deep curriculum gaps and precise hiring analytics.</p>
-                  <button className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black rounded-2xl text-sm shadow-[0_0_30px_rgba(99,102,241,0.3)] transition-all w-full group-hover:shadow-indigo-500/60 uppercase tracking-widest">
+                  <button className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black rounded-2xl text-sm shadow-[0_0_30px_rgba(245,158,11,0.3)] transition-all w-full group-hover:shadow-amber-500/60 uppercase tracking-widest">
                     Unlock Premium
                   </button>
                 </div>
@@ -553,13 +553,13 @@ export default function PartnerDashboard() {
                     placeholder="Search students or roles..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm text-white outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-500 font-medium"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm text-white outline-none focus:border-amber-500/50 transition-all placeholder:text-slate-500 font-medium"
                   />
                 </div>
                 <select 
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-sm text-slate-300 outline-none focus:border-indigo-500/50 transition-all font-bold cursor-pointer w-full sm:w-auto"
+                  className="bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-sm text-slate-300 outline-none focus:border-amber-500/50 transition-all font-bold cursor-pointer w-full sm:w-auto"
                 >
                   <option value="all">All Status</option>
                   <option value="pass">Pass Only</option>
@@ -599,11 +599,11 @@ export default function PartnerDashboard() {
                       return (
                         <tr key={scan.id} className="hover:bg-white/5 transition-all cursor-pointer group">
                           <td className="py-5 pl-6 pr-2 border-b border-white/5">
-                            <div className="font-bold text-slate-200 truncate group-hover:text-indigo-400 transition-colors tracking-tight text-sm">{scan.userEmail}</div>
+                            <div className="font-bold text-slate-200 truncate group-hover:text-amber-400 transition-colors tracking-tight text-sm">{scan.userEmail}</div>
                             <div className="text-[10px] font-black text-slate-500 mt-1 uppercase tracking-widest">{scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleDateString() : 'Just now'}</div>
                           </td>
                           <td className="py-5 pr-2 border-b border-white/5">
-                            <span className="text-xs font-black text-indigo-300 border border-indigo-500/20 bg-indigo-500/5 px-2.5 py-1 rounded-lg uppercase tracking-tight truncate block w-fit">{scan.targetRole || "Unknown Role"}</span>
+                            <span className="text-xs font-black text-amber-300 border border-amber-500/20 bg-amber-500/5 px-2.5 py-1 rounded-lg uppercase tracking-tight truncate block w-fit">{scan.targetRole || "Unknown Role"}</span>
                           </td>
                           {isPremium && (
                             <>
@@ -644,7 +644,7 @@ export default function PartnerDashboard() {
             <button onClick={() => setShowUpgradeModal(false)} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors z-10 bg-white/5 p-2 rounded-full"><X size={20} /></button>
             
             <div className="p-10 text-center">
-              <div className="w-24 h-24 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_0_40px_rgba(99,102,241,0.4)] group-hover:rotate-12 transition-transform duration-500 border border-white/20">
+              <div className="w-24 h-24 bg-gradient-to-tr from-amber-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_0_40px_rgba(245,158,11,0.4)] group-hover:rotate-12 transition-transform duration-500 border border-white/20">
                 <Crown className="text-white w-12 h-12" />
               </div>
               <h2 className="text-3xl font-black text-white mb-4 tracking-tighter uppercase">Unlock Enterprise</h2>
@@ -657,7 +657,7 @@ export default function PartnerDashboard() {
                 <li className="flex items-center gap-3 font-bold"><CheckCircle className="text-emerald-400" size={20}/> Downloadable Pivot Reports</li>
               </ul>
 
-              <button onClick={() => {setShowUpgradeModal(false); alert("Enterprise sales team notified!");}} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black py-4 px-6 rounded-2xl shadow-xl transition-all flex justify-center items-center gap-3 uppercase tracking-widest text-sm hover:scale-105 active:scale-95">
+              <button onClick={() => {setShowUpgradeModal(false); alert("Enterprise sales team notified!");}} className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black py-4 px-6 rounded-2xl shadow-xl transition-all flex justify-center items-center gap-3 uppercase tracking-widest text-sm hover:scale-105 active:scale-95">
                 Contact Sales Hub <ArrowRight size={20}/>
               </button>
             </div>
@@ -670,14 +670,14 @@ export default function PartnerDashboard() {
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
            <div className="bg-[#0a0f1c] border border-white/10 rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-fade-in-up">
              <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/5 backdrop-blur-md">
-               <h3 className="text-xl font-black text-white flex items-center gap-3 tracking-tighter uppercase"><UploadCloud className="text-indigo-400" /> Roster Provisioning</h3>
+               <h3 className="text-xl font-black text-white flex items-center gap-3 tracking-tighter uppercase"><UploadCloud className="text-amber-400" /> Roster Provisioning</h3>
                <button onClick={() => setShowUploadModal(false)} className="text-slate-500 hover:text-rose-400 transition-colors bg-white/5 p-2 rounded-full"><X size={20} /></button>
              </div>
              
              <div className="p-10">
-               <p className="text-sm font-medium text-slate-400 mb-8 leading-relaxed">Securely upload a CSV containing student emails. They will instantly receive premium access tied to <strong className="text-indigo-400 font-black uppercase tracking-widest">{tenantId}</strong>.</p>
+               <p className="text-sm font-medium text-slate-400 mb-8 leading-relaxed">Securely upload a CSV containing student emails. They will instantly receive premium access tied to <strong className="text-amber-400 font-black uppercase tracking-widest">{tenantId}</strong>.</p>
                
-               <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-3xl p-12 cursor-pointer transition-all duration-500 ${csvFile ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/10 bg-white/5 hover:border-indigo-500/30'}`}>
+               <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-3xl p-12 cursor-pointer transition-all duration-500 ${csvFile ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/10 bg-white/5 hover:border-amber-500/30'}`}>
                  <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
                  {csvFile ? (
                    <div className="text-center"><CheckCircle className="text-emerald-500 w-16 h-16 mx-auto mb-4 drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]"/><p className="text-emerald-400 text-lg font-black tracking-tight">{csvFile.name}</p></div>
@@ -687,7 +687,7 @@ export default function PartnerDashboard() {
                </label>
 
                {uploadMessage.text && (
-                 <div className={`mt-8 text-xs font-black p-4 rounded-2xl animate-fade-in-up ${uploadMessage.type === 'error' ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20' : uploadMessage.type === 'success' ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-indigo-400 bg-indigo-500/10 border border-indigo-500/20'}`}>
+                 <div className={`mt-8 text-xs font-black p-4 rounded-2xl animate-fade-in-up ${uploadMessage.type === 'error' ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20' : uploadMessage.type === 'success' ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'}`}>
                    {uploadMessage.text}
                  </div>
                )}
@@ -695,7 +695,7 @@ export default function PartnerDashboard() {
 
              <div className="px-8 py-6 border-t border-white/5 bg-white/5 backdrop-blur-md flex justify-end gap-4">
                <button onClick={() => setShowUploadModal(false)} className="px-6 py-3 text-sm font-black text-slate-400 hover:text-white transition-all uppercase tracking-widest">Cancel</button>
-               <button onClick={processBulkUpload} disabled={isUploading || !csvFile} className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-8 py-3 rounded-2xl text-sm font-black transition-all disabled:opacity-50 disabled:grayscale flex items-center gap-3 shadow-xl shadow-indigo-500/20 uppercase tracking-widest hover:scale-105 active:scale-95">
+               <button onClick={processBulkUpload} disabled={isUploading || !csvFile} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-indigo-500 hover:to-purple-500 text-white px-8 py-3 rounded-2xl text-sm font-black transition-all disabled:opacity-50 disabled:grayscale flex items-center gap-3 shadow-xl shadow-amber-500/20 uppercase tracking-widest hover:scale-105 active:scale-95">
                  {isUploading ? <Activity size={18} className="animate-spin" /> : 'Confirm Upload'}
                </button>
              </div>
