@@ -1,49 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Building2, Users, Target, TrendingUp, Download, CheckCircle, 
-  XCircle, FileText, Activity, BookOpen, AlertCircle, UploadCloud, X, Lock, Crown, ArrowRight, Briefcase, AlertTriangle, Sparkles, Search, Terminal, Circle 
+import {
+  Building2, Users, Target, TrendingUp, Download, CheckCircle,
+  XCircle, FileText, Activity, BookOpen, AlertCircle, UploadCloud, X, Lock, Crown, ArrowRight, Briefcase, AlertTriangle, Sparkles, Search, Terminal, Circle
 } from 'lucide-react';
 import { auth, db } from './firebase';
-import { collection, query, where, onSnapshot, writeBatch, doc, getDoc } from 'firebase/firestore'; 
+import { collection, query, where, onSnapshot, writeBatch, doc, getDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
 // --- CUSTOM SVG LOGO COMPONENT ---
 const SkillNovaLogo = ({ className = "w-10 h-10" }) => (
   <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M50 5L60.5 39.5L95 50L60.5 60.5L50 95L39.5 60.5L5 50L39.5 39.5L50 5Z" fill="url(#nova-gradient)"/>
-    <circle cx="50" cy="50" r="18" fill="#04060d"/>
-    <circle cx="50" cy="50" r="8" fill="url(#nova-gradient)"/>
+    <path d="M50 5L60.5 39.5L95 50L60.5 60.5L50 95L39.5 60.5L5 50L39.5 39.5L50 5Z" fill="url(#nova-amber)" />
+    <circle cx="50" cy="50" r="18" fill="#09090b" />
+    <circle cx="50" cy="50" r="8" fill="url(#nova-amber)" />
     <defs>
-      <linearGradient id="nova-gradient" x1="5" y1="5" x2="95" y2="95" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#6366f1" /> 
-        <stop offset="1" stopColor="#ec4899" /> 
+      <linearGradient id="nova-amber" x1="5" y1="5" x2="95" y2="95" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#f59e0b" />
+        <stop offset="1" stopColor="#ea580c" />
       </linearGradient>
     </defs>
   </svg>
 );
 
-
-// --- RADIAL PROGRESS COMPONENT ---
-const RadialProgress = ({ percentage, colorClass, size = 140, strokeWidth = 14, label, subLabel }) => {
+// --- CLEAN RADIAL PROGRESS COMPONENT ---
+const RadialProgress = ({ percentage, colorClass, size = 120, strokeWidth = 8, label, subLabel }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (percentage / 100) * circumference;
-  
+
   return (
-    <div className="flex flex-col items-center justify-center group pointer-events-auto">
-      <div className="relative inline-flex items-center justify-center group-hover:scale-105 transition-transform duration-500 delay-75" style={{ width: size, height: size }}>
-        <svg className="transform -rotate-90 drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]" width={size} height={size}>
-          <circle cx={size/2} cy={size/2} r={radius} stroke="rgba(255,255,255,0.03)" strokeWidth={strokeWidth} fill="none" />
-          <circle cx={size/2} cy={size/2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="none" strokeDasharray={circumference} strokeDashoffset={offset} className={`transition-all duration-1500 ease-out ${colorClass}`} strokeLinecap="round" />
+    <div className="flex flex-col items-center justify-center">
+      <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+        <svg className="transform -rotate-90" width={size} height={size}>
+          <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} fill="none" />
+          <circle cx={size / 2} cy={size / 2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="none" strokeDasharray={circumference} strokeDashoffset={offset} className={`transition-all duration-1000 ease-out ${colorClass}`} strokeLinecap="round" />
         </svg>
         <div className="absolute flex flex-col items-center justify-center">
-          <span className="text-3xl font-black text-white tracking-tighter" style={{ textShadow: '0 0 20px currentColor' }}>{percentage}%</span>
+          <span className="text-3xl font-semibold text-white tracking-tight">{percentage}%</span>
         </div>
       </div>
       {(label || subLabel) && (
         <div className="mt-4 text-center">
-          {label && <p className="text-sm font-black text-white tracking-widest uppercase">{label}</p>}
-          {subLabel && <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">{subLabel}</p>}
+          {label && <p className="text-sm font-medium text-slate-200">{label}</p>}
+          {subLabel && <p className="text-xs font-normal text-slate-500 mt-0.5">{subLabel}</p>}
         </div>
       )}
     </div>
@@ -55,14 +54,14 @@ export default function PartnerDashboard() {
   const [scans, setScans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(null); 
+  const [errorMsg, setErrorMsg] = useState(null);
 
   // --- QA BYPASS STATE ---
   const [isTester, setIsTester] = useState(false);
 
   // --- MONETIZATION TIER ---
   const [partnerTier, setPartnerTier] = useState('free'); // 'free' or 'premium'
-  
+
   // Calculate final premium status (Real Tier + QA Bypass)
   const isPremium = partnerTier === 'premium' || isTester;
 
@@ -72,7 +71,7 @@ export default function PartnerDashboard() {
   const [csvFile, setCsvFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState({ text: '', type: '' });
-  
+
   // --- TABLE FILTERS ---
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pass' | 'fail'
@@ -116,7 +115,7 @@ export default function PartnerDashboard() {
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    animate(); 
+    animate();
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
@@ -126,7 +125,7 @@ export default function PartnerDashboard() {
 
   useEffect(() => {
     if (!tenantId || !currentUser?.email) {
-      if(!tenantId) setErrorMsg("Admin configuration error: No Partner Code assigned to this account.");
+      if (!tenantId) setErrorMsg("Admin configuration error: No Partner Code assigned to this account.");
       setLoading(false);
       return;
     }
@@ -146,7 +145,7 @@ export default function PartnerDashboard() {
         // Check actual Partner Tier
         const adminDoc = await getDoc(doc(db, 'admins', currentUser.email.toLowerCase()));
         if (adminDoc.exists()) {
-          setPartnerTier(adminDoc.data().tier || 'free'); 
+          setPartnerTier(adminDoc.data().tier || 'free');
         }
       } catch (err) {
         console.error("Access check error:", err);
@@ -173,7 +172,7 @@ export default function PartnerDashboard() {
         const uniqueEmails = new Set(scanData.map(s => s.userEmail));
         const totalScore = scanData.reduce((acc, curr) => acc + (curr.roleMatchScore || curr.score || 0), 0);
         const passedCount = scanData.filter(s => (s.roleMatchScore || s.score || 0) >= 60).length;
-        
+
         const gapCounts = {};
         scanData.forEach(scan => {
           if (scan.missingKeywords) {
@@ -255,7 +254,7 @@ export default function PartnerDashboard() {
 
         emailsToUpload.slice(0, 500).forEach((email) => {
           const studentRef = doc(db, 'allowed_students', email);
-          batch.set(studentRef, { tenantId: tenantId }); 
+          batch.set(studentRef, { tenantId: tenantId });
         });
 
         await batch.commit();
@@ -282,153 +281,94 @@ export default function PartnerDashboard() {
   const getScoreColor = (score) => {
     if (score >= 75) return 'text-emerald-400';
     if (score >= 60) return 'text-amber-400';
-    return 'text-rose-400'; 
+    return 'text-rose-400';
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#04060d] flex items-center justify-center">
-        <Activity className="text-indigo-500 animate-spin w-12 h-12" />
+      <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+        <Activity className="text-amber-500 animate-spin w-8 h-8" />
       </div>
     );
   }
 
   if (errorMsg) {
     return (
-      <div className="min-h-screen bg-[#04060d] flex flex-col items-center justify-center p-4">
-        <AlertCircle className="text-rose-500 w-16 h-16 mb-4" />
-        <h2 className="text-2xl font-bold text-white mb-2">Dashboard Error</h2>
-        <p className="text-slate-400 text-center max-w-md mb-6">{errorMsg}</p>
-        <button onClick={() => auth.signOut()} className="px-6 py-2 bg-amber-600 text-white rounded-lg">Sign Out</button>
+      <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center p-4">
+        <AlertCircle className="text-rose-500 w-10 h-10 mb-4" />
+        <h2 className="text-xl font-semibold text-white mb-2">System Error</h2>
+        <p className="text-slate-400 text-sm text-center max-w-md mb-6">{errorMsg}</p>
+        <button onClick={() => auth.signOut()} className="px-5 py-2 bg-white text-black font-medium rounded-lg hover:bg-slate-200 transition-colors">Sign Out</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#04060d] text-slate-200 font-sans selection:bg-amber-500/30 overflow-x-hidden flex flex-col relative">
+    <div className="min-h-screen bg-[#09090b] text-slate-200 font-sans selection:bg-amber-500/30 overflow-x-hidden flex flex-col relative font-inter">
       <style>
         {`
-          @keyframes splashFade {
-            0%, 60% { opacity: 1; z-index: 100; }
-            100% { opacity: 0; z-index: -1; visibility: hidden; }
-          }
-          @keyframes starEntrance {
-            0% { transform: scale(0) rotate(-135deg); opacity: 0; }
-            20% { transform: scale(3.5) rotate(0deg); opacity: 1; }
-            60% { transform: scale(3.5) rotate(0deg); opacity: 1; }
-            100% { transform: translate(-40vw, -45vh) scale(0.5); opacity: 0; }
-          }
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(40px) scale(0.95); filter: blur(10px); }
-            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-          }
           @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
           }
-          @keyframes floatAnimation {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(5%, 5%) scale(1.05); }
-            66% { transform: translate(-2%, 8%) scale(0.95); }
+          @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
           }
-          @keyframes neonPulse {
-            0%, 100% { border-color: rgba(245,158,11,0.2); box-shadow: 0 0 20px rgba(245,158,11,0.0); }
-            50% { border-color: rgba(245,158,11,0.6); box-shadow: 0 0 40px rgba(245,158,11,0.2); }
+          @keyframes neon {
+            0%, 100% { box-shadow: 0 0 10px rgba(245,158,11,0.5), 0 0 20px rgba(245,158,11,0.3); }
+            50% { box-shadow: 0 0 20px rgba(245,158,11,0.8), 0 0 40px rgba(245,158,11,0.5); }
           }
-
-          .animate-splash { animation: splashFade 1.6s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
-          .animate-star-entrance { animation: starEntrance 1.6s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
-          .animate-fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-          .animate-fade-in { animation: fadeIn 1s ease-out forwards; opacity: 0; }
-          .animate-pulse-slow { animation: floatAnimation 25s ease-in-out infinite; }
-          .animate-neon { animation: neonPulse 3s infinite; }
+          .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
+          .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+          .animate-neon { animation: neon 2s infinite ease-in-out; }
           
-          .delay-100 { animation-delay: 1500ms; }
-          .delay-200 { animation-delay: 1600ms; }
-          .delay-300 { animation-delay: 1700ms; }
-          
-          /* ULTRA DUAL-LAYERED GRID */
-          .bg-grid-pattern-slate {
+          .bg-grid-pattern {
             background-image: 
+              linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px),
               linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px),
-              linear-gradient(to right, rgba(255,255,255,0.01) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(255,255,255,0.01) 1px, transparent 1px);
-            background-size: 120px 120px, 120px 120px, 30px 30px, 30px 30px;
+              linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
             transition: background-position 0.1s ease-out;
           }
-
-          /* 3D PERSPECTIVE CLASSES */
-          .perspective-1000 { perspective: 1000px; }
-          .card-3d { transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-          .perspective-1000:hover .card-3d { transform: rotateX(2deg) rotateY(-2deg) scale(1.02); }
         `}
       </style>
 
-      {/* --- CINEMATIC SPLASH SCREEN --- */}
-      <div className="fixed inset-0 bg-[#04060d] flex items-center justify-center animate-splash pointer-events-none z-[100]">
-        <SkillNovaLogo className="w-24 h-24 animate-star-entrance drop-shadow-[0_0_30px_rgba(245,158,11,0.8)]" />
-      </div>
+      {/* --- DYNAMIC BACKGROUND GLOWS AND PARALLAX GRID --- */}
+      <div ref={gridRef} className="fixed inset-0 bg-grid-pattern [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)] pointer-events-none z-0"></div>
+      <div className={`fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-amber-500/20 to-orange-600/10 blur-[150px] rounded-full pointer-events-none transition-colors duration-1000 z-0`}></div>
 
-      {/* --- ATMOSPHERIC BACKGROUND --- */}
-      <div ref={gridRef} className="fixed inset-0 bg-grid-pattern-slate [mask-image:radial-gradient(ellipse_at_top,black,transparent_80%)] pointer-events-none z-0"></div>
-      
-      {/* Drifting Orbs */}
-      <div className="fixed top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-amber-600/10 blur-[150px] animate-pulse-slow pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-orange-600/10 blur-[150px] animate-pulse-slow delay-1000 pointer-events-none z-0"></div>
-      
-      {/* Torch Cursor Effect */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1200px] h-[800px] bg-gradient-to-b from-amber-500/15 via-orange-500/5 to-transparent blur-[150px] rounded-full pointer-events-none z-0 transition-colors duration-1000 mix-blend-screen opacity-70"></div>
+      {/* --- EQUI-SPACED, PERFECTLY CENTERED NAVBAR --- */}
+      <div className="fixed top-4 md:top-6 w-full z-50 px-4 md:px-8 flex justify-center animate-fade-in transition-all pointer-events-none">
+        <nav className="w-full max-w-4xl bg-[#0a0f1c]/80 backdrop-blur-2xl border border-white/10 rounded-full px-6 py-3 flex items-center justify-between shadow-[0_8px_32px_rgba(0,0,0,0.5)] pointer-events-auto transition-all hover:bg-[#0a0f1c]/95">
 
-      {/* --- FLOATING PILL NAVIGATION --- */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-50 animate-fade-in-up delay-100">
-        <div className="bg-[#0a0f1c]/70 backdrop-blur-3xl border border-white/10 p-3 pl-6 pr-4 rounded-full flex flex-col md:flex-row justify-between items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all hover:border-amber-500/30 group">
-          <div className="flex items-center gap-4">
-            <SkillNovaLogo className="w-8 h-8 drop-shadow-[0_0_15px_rgba(245,158,11,0.6)] group-hover:scale-110 transition-transform" />
-            <div className="h-6 w-px bg-white/10 hidden md:block"></div>
-            <h1 className="text-xl md:text-2xl font-black text-white tracking-tighter flex items-center gap-2">
-              Cohort Intelligence <span className="text-amber-500/50">/</span> <span className="text-transparent bg-clip-text bg-gradient-to-br from-amber-300 to-orange-500 uppercase">{tenantId || 'Unknown'}</span>
-            </h1>
-            <div className="hidden lg:flex items-center gap-2 ml-4">
-               {isPremium ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[10px] font-black uppercase tracking-widest shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-                  <Crown size={12} className="text-amber-400"/> {isTester ? 'QA Bypass' : 'Premium'}
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                  Free Tier
-                </div>
-              )}
+          {/* 1. Left - Logo */}
+          <div className="flex items-center gap-3 w-1/4">
+            <SkillNovaLogo className="w-8 h-8 drop-shadow-[0_0_12px_rgba(245,158,11,0.5)]" />
+            <span className="text-xl font-black text-white tracking-tight hidden sm:block">SkillNova</span>
+          </div>
+
+          {/* 2. Center - Navigation Links */}
+          <div className="flex-1 flex justify-center items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black tracking-widest uppercase text-amber-500 bg-amber-500/10 px-4 py-2 rounded-full border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.3)]">University Partner Portal</span>
+              {isPremium && <span className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-500 border border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.5)] text-[10px] font-black uppercase tracking-widest"><Crown size={12} /> Premium Level</span>}
             </div>
           </div>
-          
-          <div className="flex items-center gap-3 mt-4 md:mt-0">
-            <button 
-              onClick={() => isPremium ? setShowUploadModal(true) : setShowUpgradeModal(true)}
-              className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white rounded-full text-xs font-black transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] flex items-center gap-2 hover:scale-105 active:scale-95 uppercase tracking-widest"
-            >
-              {!isPremium ? <Lock size={14} className="opacity-70" /> : <UploadCloud size={16} />}
-              Onboard
-            </button>
-            <button 
-              onClick={() => isPremium ? handleExportCurriculumReport() : setShowUpgradeModal(true)}
-              disabled={isExporting}
-              className="w-10 h-10 flex flex-col justify-center items-center bg-white/5 backdrop-blur-xl border border-white/10 hover:border-white/20 text-white rounded-full transition-all hover:bg-white/10 active:scale-95 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]"
-              title="Export Report"
-            >
-              {isExporting ? <Activity size={16} className="animate-spin" /> : (!isPremium ? <Lock size={14} className="opacity-70 text-slate-400"/> : <Download size={16} className="text-slate-300" />)}
-            </button>
-            <div className="h-6 w-px bg-white/10 hidden md:block mx-1"></div>
-            <button onClick={() => auth.signOut()} className="w-10 h-10 bg-white/5 backdrop-blur-xl border border-white/10 hover:border-rose-500/30 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 flex flex-col items-center justify-center rounded-full transition-all active:scale-95">
-              <X size={16} />
+
+          {/* 3. Right - Action Icons */}
+          <div className="flex justify-end w-1/4 gap-2">
+            <button onClick={() => auth.signOut()} className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-rose-500/20 border border-white/10 transition-all shadow-[0_0_15px_rgba(0,0,0,0.4)]">
+              <X size={16} className="text-slate-300 group-hover:text-rose-400 transition-colors" />
             </button>
           </div>
-        </div>
+        </nav>
       </div>
 
       {/* --- MAIN CONTENT START --- */}
       <div className="relative z-10 flex-grow px-4 md:px-8 pt-40 pb-20 max-w-[1400px] mx-auto w-full animate-fade-in-up delay-200">
-        
+
         {/* PREMIUM UPGRADE BANNER (Free Tier Only) */}
         {!isPremium && (
           <div className="mb-10 p-1 bg-gradient-to-r from-amber-500/50 via-orange-500/50 to-rose-500/50 rounded-[2.5rem] relative group perspective-1000">
@@ -450,223 +390,183 @@ export default function PartnerDashboard() {
           </div>
         )}
 
-        {/* --- HIGH-IMPACT BENTO BOX METRICS --- */}
-        <div className="grid grid-cols-1 md:grid-cols-12 md:grid-rows-2 gap-6 mb-10">
-          
-          {/* CENTERPIECE: AVERAGE READINESS (Row Span 2, Col Span 6) */}
-          <div className="md:col-span-6 md:row-span-2 relative perspective-1000 group cursor-pointer" onClick={() => !isPremium && setShowUpgradeModal(true)}>
-            <div className="card-3d bg-[#0a0f1c]/40 backdrop-blur-2xl border border-white/10 hover:border-emerald-500/30 rounded-[2.5rem] p-10 h-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col justify-between overflow-hidden relative group-hover:shadow-[0_20px_60px_rgba(16,185,129,0.15)] transition-all">
-              
-              <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] group-hover:bg-emerald-500/20 transition-all pointer-events-none"></div>
-              
-              <div className={`relative z-10 transition-all duration-700 ${!isPremium ? 'blur-md opacity-20' : ''}`}>
-                <div className="flex justify-between items-start mb-8">
-                  <div>
-                     <p className="text-emerald-400 text-xs font-black uppercase tracking-[0.3em] mb-3 flex items-center gap-2"><Target size={16}/> Readiness Core</p>
-                     <h3 className="text-4xl font-black text-white tracking-tighter">Cohort Average</h3>
+        {/* --- COMMAND CONSOLE (Restored Actions) --- */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-5 bg-[#121216]/50 backdrop-blur-3xl border-t border-l border-amber-500/30 border-r border-b border-black rounded-[2rem] mb-12 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+           <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-amber-500/10 to-transparent blur-[30px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+           
+           <div className="flex items-center gap-5 relative z-10 w-full md:w-auto">
+             <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl flex items-center justify-center text-[#04060d] shadow-[0_0_20px_rgba(245,158,11,0.5)] shadow-inner"><Terminal size={26}/></div>
+             <div>
+                <h2 className="text-2xl font-black text-white tracking-tighter uppercase flex items-center gap-3 drop-shadow-md">Command Console <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_10px_rgba(245,158,11,1)]"></span></h2>
+                <p className="text-[10px] text-amber-500 font-bold tracking-widest uppercase">System Core / Active</p>
+             </div>
+           </div>
+
+           <div className="flex flex-col sm:flex-row items-center gap-3 relative z-10 w-full md:w-auto">
+             <button onClick={() => isPremium ? setShowUploadModal(true) : setShowUpgradeModal(true)} className="w-full sm:w-auto px-8 py-4 bg-amber-500 hover:bg-amber-400 text-[#04060d] font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:scale-105 active:scale-95 border-b-2 border-amber-600">
+               {!isPremium ? <Lock size={16} className="opacity-70" /> : <UploadCloud size={16} />}
+               Bulk Onboard
+             </button>
+             <button onClick={() => isPremium ? handleExportCurriculumReport() : setShowUpgradeModal(true)} disabled={isExporting} className="w-full sm:w-auto px-8 py-4 bg-black/60 hover:bg-black/80 border border-amber-500/50 text-amber-500 font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-2 transition-all hover:border-amber-400 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:scale-105 active:scale-95">
+               {isExporting ? <Activity size={16} className="animate-spin" /> : <Download size={16} />}
+               Export Intel
+             </button>
+           </div>
+        </div>
+
+        {/* --- DYNAMIC METRICS BOXES --- */}
+        {/* --- EXTREME 3D METRICS HOLOGRAPHY --- */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 mb-16 perspective-1000">
+
+          {/* HOLOGRAPHIC CENTERPIECE: ALIGNMENT */}
+          <div className="xl:col-span-7 relative group" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+             <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-orange-500/5 blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-[3rem]"></div>
+             
+             <div className="h-full bg-black/40 backdrop-blur-3xl border-t border-l border-white/10 border-r border-b border-black rounded-[3rem] p-8 md:p-12 relative overflow-hidden transition-transform duration-700 hover:rotate-x-[2deg] hover:rotate-y-[2deg] hover:-translate-y-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] cursor-pointer group-hover:border-amber-500/30">
+                <div className={`relative z-10 flex flex-col md:flex-row justify-between items-center h-full gap-10 transition-all duration-500 ${!isPremium ? 'blur-[10px] opacity-40' : ''}`}>
+                  <div className="w-full md:w-1/2 flex justify-center group-hover:scale-105 transition-transform duration-700 drop-shadow-[0_0_40px_rgba(245,158,11,0.2)]">
+                    <RadialProgress percentage={stats.avgMatchScore} colorClass={getScoreColor(stats.avgMatchScore)} size={280} strokeWidth={16} label="PROBABILITY" subLabel="Network Sync" />
+                  </div>
+                  <div className="w-full md:w-1/2 text-left md:border-l md:border-white/10 md:pl-10">
+                    <h2 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-500 tracking-tighter mb-2">SYNCED.</h2>
+                    <p className="text-amber-500 font-black uppercase tracking-widest text-[10px] mb-8 bg-amber-500/10 w-fit px-3 py-1.5 rounded-lg border border-amber-500/20 shadow-sm">Cohort Alignment</p>
+                    <p className="text-sm text-slate-400 font-medium leading-relaxed max-w-xs">The active cohort probability factor against prevailing market data points, weighted by real-world job descriptions.</p>
                   </div>
                 </div>
-                
-                <div className="flex justify-center my-6">
-                  <RadialProgress percentage={stats.avgMatchScore} colorClass={getScoreColor(stats.avgMatchScore)} size={220} strokeWidth={18} label="Alignment Match" subLabel="vs Real Market Jobs" />
-                </div>
-              </div>
 
-              {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-20"><div className="bg-black/60 p-6 rounded-full border border-white/10 group-hover:scale-110 transition-transform"><Lock className="text-amber-400 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" size={40}/></div></div>}
-            </div>
+                {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-md z-20"><div className="bg-[#18181b] p-8 rounded-[2rem] border border-amber-500/30 shadow-[0_0_50px_rgba(245,158,11,0.3)] flex flex-col items-center hover:scale-110 transition-transform"><Lock className="w-12 h-12 text-amber-500 mb-3 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" /><span className="text-[10px] text-white font-black uppercase tracking-widest">Locked Area</span></div></div>}
+             </div>
           </div>
 
-          {/* AT RISK (Row Span 2, Col Span 3) */}
-          <div className="md:col-span-3 md:row-span-2 relative perspective-1000 group cursor-pointer" onClick={() => !isPremium && setShowUpgradeModal(true)}>
-            <div className="card-3d bg-[#0a0f1c]/40 backdrop-blur-2xl border border-white/10 hover:border-rose-500/40 rounded-[2rem] p-8 h-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col justify-between overflow-hidden relative group-hover:shadow-[0_0_40px_rgba(244,63,94,0.15)] transition-all animate-neon">
-              
-              <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-rose-500/10 to-transparent pointer-events-none"></div>
-              
-              <div className={`relative z-10 flex flex-col h-full transition-all duration-700 ${!isPremium ? 'blur-md opacity-20' : ''}`}>
-                <div>
-                   <p className="text-rose-400 text-[10px] font-black uppercase tracking-[0.2em] mb-3 flex items-center gap-2"><AlertTriangle size={14}/> Intervention Needed</p>
-                   <h3 className="text-lg font-black text-white tracking-tighter uppercase line-clamp-2">At-Risk Students</h3>
-                </div>
-                <div className="flex-grow flex flex-col items-center justify-center mt-4">
-                   <div className="text-[5rem] leading-none font-black text-rose-500 drop-shadow-[0_0_25px_rgba(244,63,94,0.4)] group-hover:scale-110 transition-transform">{stats.atRiskCount}</div>
-                   <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-4 text-center">Score &lt; 35% Threshold</div>
-                </div>
-              </div>
-
-              {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-20"><div className="bg-black/60 p-4 rounded-full border border-white/10"><Lock className="text-rose-400 drop-shadow-[0_0_15px_rgba(244,63,94,0.8)]" size={24}/></div></div>}
-            </div>
-          </div>
-
-          {/* ACTIVE STUDENTS (Row Span 1, Col Span 3) */}
-          <div className="md:col-span-3 md:row-span-1 relative perspective-1000 group">
-            <div className="card-3d bg-[#0a0f1c]/50 backdrop-blur-xl border border-white/10 hover:border-blue-500/30 rounded-[2rem] p-6 h-full shadow-xl flex justify-between items-center overflow-hidden transition-all group-hover:shadow-[0_0_30px_rgba(59,130,246,0.1)]">
-               <div>
-                 <p className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Headcount</p>
-                 <h4 className="text-4xl font-black text-white tracking-tighter">{stats.uniqueStudents}</h4>
+          {/* DUAL STACK COLUMN */}
+          <div className="xl:col-span-5 flex flex-col gap-8">
+            
+            {/* AT RISK BLEEDING EDGE */}
+            <div className="flex-1 bg-gradient-to-tl from-rose-950/80 to-black/80 backdrop-blur-3xl border-t border-rose-500/30 border-l border-rose-500/10 border-b border-r border-black rounded-[3rem] p-8 relative overflow-hidden transition-transform duration-500 hover:rotate-x-[-2deg] hover:-translate-y-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] cursor-pointer group" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+               <div className="absolute -top-32 -right-32 w-80 h-80 bg-rose-500/20 blur-[80px] rounded-full group-hover:bg-rose-500/40 transition-all duration-700"></div>
+               
+               <div className={`relative z-10 flex flex-col sm:flex-row h-full items-start sm:items-center justify-between gap-6 transition-all duration-500 ${!isPremium ? 'blur-[8px] opacity-40' : ''}`}>
+                 <div>
+                   <h3 className="text-rose-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 mb-2 bg-rose-500/10 w-fit px-3 py-1.5 rounded-lg border border-rose-500/20"><AlertTriangle size={14}/> Critical Drop</h3>
+                   <div className="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-md group-hover:translate-x-2 transition-transform">AT-RISK <br className="hidden sm:block"/>UNITS</div>
+                 </div>
+                 <div className="text-8xl md:text-9xl font-black text-rose-500 tracking-tighter drop-shadow-[0_0_40px_rgba(244,63,94,0.6)] animate-pulse">{stats.atRiskCount}</div>
                </div>
-               <div className="bg-blue-500/10 p-4 rounded-full border border-blue-500/20 shadow-inner group-hover:rotate-12 transition-transform"><Users className="text-blue-400" size={24} /></div>
-            </div>
-          </div>
 
-          {/* RESUME SCANS (Row Span 1, Col Span 3) */}
-          <div className="md:col-span-3 md:row-span-1 relative perspective-1000 group">
-             <div className="card-3d bg-[#0a0f1c]/50 backdrop-blur-xl border border-white/10 hover:border-purple-500/30 rounded-[2rem] p-6 h-full shadow-xl flex justify-between items-center overflow-hidden transition-all group-hover:shadow-[0_0_30px_rgba(168,85,247,0.1)]">
-               <div>
-                 <p className="text-purple-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Data Points</p>
-                 <h4 className="text-4xl font-black text-white tracking-tighter">{stats.totalScans}</h4>
-               </div>
-               <div className="bg-purple-500/10 p-4 rounded-full border border-purple-500/20 shadow-inner group-hover:-rotate-12 transition-transform"><FileText className="text-purple-400" size={24} /></div>
+               {!isPremium && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20"><div className="bg-[#18181b] p-6 rounded-[2rem] border border-rose-500/30 shadow-[0_0_40px_rgba(244,63,94,0.3)] hover:scale-110 transition-transform"><Lock className="w-10 h-10 text-rose-500 drop-shadow-[0_0_15px_rgba(244,63,94,0.8)]" /></div></div>}
             </div>
+
+            {/* NEON STAT SPLITS */}
+            <div className="flex-1 flex flex-col sm:flex-row gap-8">
+               <div className="flex-1 bg-black/50 backdrop-blur-3xl border-t border-l border-white/10 border-r border-b border-black rounded-[2.5rem] p-8 relative overflow-hidden flex flex-col justify-end transition-all duration-500 hover:-translate-y-2 hover:border-blue-500/40 shadow-[0_10px_30px_rgba(0,0,0,0.5)] group">
+                 <div className="absolute top-6 right-6 w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center group-hover:bg-blue-500/30 transition-colors shadow-inner"><Users className="text-blue-400" size={24}/></div>
+                 <div className="text-5xl md:text-6xl font-black text-white tracking-tighter mb-2 mt-12">{stats.uniqueStudents}</div>
+                 <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Active Units</div>
+               </div>
+               
+               <div className="flex-1 bg-black/50 backdrop-blur-3xl border-t border-l border-white/10 border-r border-b border-black rounded-[2.5rem] p-8 relative overflow-hidden flex flex-col justify-end transition-all duration-500 hover:-translate-y-2 hover:border-purple-500/40 shadow-[0_10px_30px_rgba(0,0,0,0.5)] group">
+                 <div className="absolute top-6 right-6 w-14 h-14 bg-purple-500/10 rounded-full flex items-center justify-center group-hover:bg-purple-500/30 transition-colors shadow-inner"><FileText className="text-purple-400" size={24}/></div>
+                 <div className="text-5xl md:text-6xl font-black text-white tracking-tighter mb-2 mt-12">{stats.totalScans}</div>
+                 <div className="text-[10px] text-purple-400 font-black uppercase tracking-widest">Evaluations</div>
+               </div>
+            </div>
+
           </div>
         </div>
 
-        {/* --- ISLANDS GRID: ROSTER & INSIGHTS --- */}
+        {/* --- DETAILED METRICS GRID --- */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          
-          {/* HOLOGRAPHIC ROSTER TABLE (Span 2) */}
-          <div className="xl:col-span-2 relative perspective-1000 group">
-            <div className="card-3d bg-[#0a0f1c]/40 backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] flex flex-col h-full shadow-[0_30px_60px_rgba(0,0,0,0.6)] transition-all hover:border-white/20 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-full h-[150px] bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none"></div>
 
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6 relative z-10">
-                <h3 className="text-2xl font-black text-white flex items-center gap-3 tracking-tighter uppercase"><TrendingUp className="text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.6)]" size={28}/> Holographic Roster</h3>
-                
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
-                  <div className="relative flex-grow lg:w-80 w-full group/search">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within/search:text-amber-400 transition-colors" size={16} />
-                    <input 
-                      type="text" 
-                      placeholder="Search entities..." 
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-full py-2.5 pl-12 pr-4 text-xs font-bold text-white outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all placeholder:text-slate-500 uppercase tracking-widest shadow-inner"
-                    />
+          {/* DATA SHARD MATRIX */}
+          <div className="xl:col-span-2 relative">
+             <div className="bg-black/50 backdrop-blur-3xl border-t border-l border-white/10 border-r border-b border-black rounded-[3rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.5)] h-[600px] flex flex-col relative overflow-hidden group">
+                <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-500/5 blur-[80px] rounded-full pointer-events-none group-hover:bg-blue-500/10 transition-all duration-700"></div>
+
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-6 relative z-10 border-b border-white/10 pb-8">
+                  <div>
+                    <h3 className="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-md">DATA STREAM.</h3>
+                    <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mt-2 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span> Live Cohort Matrix</p>
                   </div>
-                  <select 
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="bg-white/5 border border-white/10 rounded-full py-2.5 px-6 text-xs text-slate-300 outline-none focus:border-amber-500/50 transition-all font-black uppercase tracking-widest cursor-pointer w-full sm:w-auto appearance-none text-center"
-                  >
-                    <option className="bg-[#0a0f1c] text-white" value="all">Global View</option>
-                    <option className="bg-[#0a0f1c] text-white" value="pass">Passed Tier</option>
-                    <option className="bg-[#0a0f1c] text-white" value="fail">Failed Tier</option>
-                  </select>
+
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="relative flex-grow sm:w-64">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                      <input type="text" placeholder="FILTER STREAM..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#0a0f1c]/80 border border-slate-800 rounded-2xl py-3.5 pl-12 pr-4 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-amber-500/50 transition-all placeholder:text-slate-600 shadow-inner" />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="overflow-x-auto overflow-y-auto max-h-[500px] pr-2 custom-scrollbar relative z-10">
-                <table className="w-full text-left table-fixed border-collapse">
-                  <thead className="sticky top-0 z-20">
-                    <tr className="bg-[#04060d]/95 backdrop-blur-2xl text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black border-b border-white/10 shadow-xl">
-                      <th className="py-5 pl-6 w-[35%] rounded-tl-3xl border-none">Entity Identity</th>
-                      <th className="py-5 pr-2 w-[25%] border-none">Operational Role</th>
-                      {isPremium && (
-                        <>
-                          <th className="py-5 pr-2 w-[12%] border-none">Sync</th>
-                          <th className="py-5 pr-2 w-[12%] border-none">Format</th>
-                        </>
-                      )}
-                      <th className="py-5 pr-6 w-[16%] rounded-tr-3xl border-none text-right">Outcome</th>
-                    </tr>
-                  </thead>
-                  <tbody className="space-y-2 relative">
-                    {scans
-                      .filter(scan => {
-                        const matchesSearch = scan.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                              scan.targetRole?.toLowerCase().includes(searchTerm.toLowerCase());
-                        const score = scan.roleMatchScore || scan.score || 0;
-                        const matchesStatus = statusFilter === 'all' || 
-                                              (statusFilter === 'pass' && score >= 60) || 
-                                              (statusFilter === 'fail' && score < 60);
-                        return matchesSearch && matchesStatus;
-                      })
-                      .map((scan) => {
-                        const score = scan.roleMatchScore || scan.score || 0;
-                        return (
-                          <tr key={scan.id} className="group hover:bg-white/5 transition-all outline-none rounded-2xl relative block w-full table-row">
-                            <td className="py-4 pl-6 pr-2 border-b border-white/5 group-hover:border-transparent rounded-l-2xl">
-                              <div className="font-bold text-slate-200 truncate group-hover:text-amber-400 group-hover:translate-x-2 transition-all tracking-tight text-sm drop-shadow-md">{scan.userEmail}</div>
-                              <div className="text-[9px] font-black text-slate-600 mt-1 uppercase tracking-widest group-hover:translate-x-2 transition-all flex items-center gap-1"><Activity size={10}/> {scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleDateString() : 'Active'}</div>
-                            </td>
-                            <td className="py-4 pr-2 border-b border-white/5 group-hover:border-transparent">
-                              <span className="text-[10px] font-black text-amber-300 bg-amber-500/10 px-3 py-1.5 rounded-full uppercase tracking-widest truncate block w-fit border border-amber-500/20 shadow-inner group-hover:shadow-[0_0_15px_rgba(245,158,11,0.2)] transition-shadow">{scan.targetRole || "Unknown"}</span>
-                            </td>
-                            {isPremium && (
-                              <>
-                                <td className={`py-4 pr-2 border-b border-white/5 group-hover:border-transparent text-sm font-black ${getScoreColor(score)}`}>
-                                  <span className="drop-shadow-[0_0_8px_currentColor]">{score}%</span>
-                                </td>
-                                <td className={`py-4 pr-2 border-b border-white/5 group-hover:border-transparent text-sm font-black ${getScoreColor(scan.atsFormatScore || 0)}`}>
-                                   <span className="drop-shadow-[0_0_8px_currentColor]">{scan.atsFormatScore || 0}%</span>
-                                </td>
-                              </>
-                            )}
-                            <td className="py-4 pr-6 border-b border-white/5 group-hover:border-transparent rounded-r-2xl text-right">
-                              {score >= 60 ? (
-                                <span className="inline-flex flex-col items-end text-[10px] font-black text-emerald-400 tracking-widest uppercase"><CheckCircle size={14} className="mb-1 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]"/> Authorized</span>
-                              ) : (
-                                <span className="inline-flex flex-col items-end text-[10px] font-black text-rose-400 tracking-widest uppercase"><XCircle size={14} className="mb-1 text-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]"/> Denied</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    {scans.length === 0 && (
-                      <tr><td colSpan={isPremium ? 5 : 3} className="py-20 text-center text-slate-500 font-bold uppercase tracking-widest text-xs italic opacity-50 block w-full table-cell">Telemetry Stream Empty</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+
+                <div className="flex-grow overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-4 relative z-10 mask-fade-bottom pb-4">
+                  {scans.filter(scan => (scan.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) || scan.targetRole?.toLowerCase().includes(searchTerm.toLowerCase()))).map(scan => {
+                     const score = scan.roleMatchScore || scan.score || 0;
+                     const isReady = score >= 60;
+                     return (
+                       <div key={scan.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-5 bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-white/20 rounded-2xl transition-all duration-300 cursor-crosshair group/row shadow-sm hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] hover:-translate-y-0.5">
+                          <div className="flex-1 mb-4 md:mb-0 w-full md:w-auto">
+                            <div className="text-sm font-black text-white truncate flex items-center gap-3 group-hover/row:text-amber-300 transition-colors"><Users size={14} className={isReady ? 'text-emerald-500' : 'text-rose-500'}/> {scan.userEmail}</div>
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 ml-6">{scan.timestamp ? new Date(scan.timestamp.toDate()).toLocaleDateString() : 'Active'}</div>
+                          </div>
+                          <div className="flex-1 flex justify-start md:justify-center mb-4 md:mb-0 w-full md:w-auto">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-black bg-white px-4 py-2 rounded-xl border border-slate-300 shadow-[0_0_15px_rgba(255,255,255,0.3)]">{scan.targetRole || "Unknown"}</span>
+                          </div>
+                          {isPremium && (
+                            <div className="flex-1 flex justify-start md:justify-end gap-8 mb-4 md:mb-0 w-full md:w-auto">
+                               <div className="text-center group-hover/row:scale-110 transition-transform">
+                                 <div className={`text-2xl font-black tracking-tighter ${getScoreColor(score)} drop-shadow-sm`}>{score}%</div>
+                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-600">Match</div>
+                               </div>
+                               <div className="text-center group-hover/row:scale-110 transition-transform">
+                                 <div className={`text-2xl font-black tracking-tighter ${getScoreColor(scan.atsFormatScore || 0)} drop-shadow-sm`}>{scan.atsFormatScore || 0}%</div>
+                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-600">Format</div>
+                               </div>
+                            </div>
+                          )}
+                          <div className="flex justify-end md:ml-8 w-full md:w-auto">
+                            {isReady ? <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]"><CheckCircle size={20}/></div> : <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 drop-shadow-[0_0_15px_rgba(244,63,94,0.3)] animate-pulse"><AlertCircle size={20}/></div>}
+                          </div>
+                       </div>
+                     )
+                  })}
+                  {scans.length === 0 && <div className="flex flex-col items-center justify-center py-20 opacity-50 text-[10px] font-black uppercase text-slate-500 tracking-widest gap-4 border border-dashed border-white/10 rounded-2xl mx-2"><Activity size={32} className="animate-spin text-amber-500"/> AWAITING STREAM...</div>}
+                </div>
+             </div>
           </div>
 
-          {/* CURRICULUM GAPS NODE (Span 1) */}
-          <div className="xl:col-span-1 relative perspective-1000 group">
-             <div className="card-3d bg-[#0a0f1c]/40 backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] flex flex-col h-full shadow-[0_30px_60px_rgba(0,0,0,0.6)] relative overflow-hidden transition-all hover:border-rose-500/30 group-hover:shadow-[0_0_50px_rgba(244,63,94,0.1)]">
-               
-               <div className="absolute -top-10 -right-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-1000 group-hover:rotate-12"><BookOpen size={200} /></div>
-               
-               <h3 className="text-xl font-black text-white mb-2 flex items-center gap-3 tracking-tighter uppercase relative z-10"><Terminal className="text-rose-400 drop-shadow-[0_0_10px_rgba(244,63,94,0.6)]" size={24}/> Network Gaps</h3>
-               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-10 relative z-10">Critical Misses in Cohort</p>
+          {/* RADICAL SKILL GAPS TYPOGRAPHY */}
+          <div className="xl:col-span-1 relative group" onClick={() => !isPremium && setShowUpgradeModal(true)}>
+            <div className="bg-[#04060d]/80 backdrop-blur-3xl border-l-4 border-l-rose-500 border-t border-b border-r border-white/5 p-8 md:p-12 rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col h-[600px] overflow-hidden relative cursor-pointer hover:bg-black transition-colors hover:-translate-y-2 duration-500">
+              <div className="absolute pointer-events-none inset-0 bg-gradient-to-b from-rose-500/10 to-transparent blur-[50px]"></div>
+              
+              <h3 className="text-4xl font-black text-white tracking-tighter flex items-center gap-3 relative z-10 mb-2 drop-shadow-md"><Terminal className="text-rose-500 animate-pulse" size={32}/> GAPS DETECTED.</h3>
+              <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-10 relative z-10 w-fit border-b border-rose-500/30 pb-2">Critical Missing Nodes</p>
 
-               <div className={`flex flex-col gap-6 relative z-10 flex-grow transition-all duration-700 ${!isPremium ? 'blur-[10px] opacity-20 pointer-events-none' : ''}`}>
-                 {stats.topGaps.length > 0 ? stats.topGaps.map((gap, index) => (
-                   <div key={index} className="bg-white/5 p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-all group/gap">
-                     <div className="flex justify-between items-center text-sm mb-3">
-                       <span className="font-black text-white tracking-tight uppercase group-hover/gap:text-rose-400 transition-colors flex items-center gap-2"><Circle size={8} className="text-rose-500 fill-rose-500 animate-pulse"/>{gap.name}</span>
-                       <span className="text-slate-400 font-bold bg-black/50 px-2 py-1 rounded-lg text-[10px]">{gap.percentage}% Impact</span>
-                     </div>
-                     <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden shadow-inner"><div className="bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 h-full rounded-full" style={{ width: `${gap.percentage}%` }}></div></div>
-                   </div>
-                 )) : (
-                   <div className="text-slate-500 text-center py-12 text-xs font-bold uppercase tracking-widest italic opacity-50">Node Empty</div>
+              <div className={`relative z-10 flex-grow flex flex-col justify-center gap-4 transition-all duration-500 ${!isPremium ? 'blur-[8px] opacity-30 select-none' : ''}`}>
+                 {stats.topGaps.length > 0 ? stats.topGaps.map((gap, index) => {
+                    const sizes = ['text-6xl md:text-7xl', 'text-5xl md:text-6xl', 'text-4xl md:text-5xl', 'text-3xl md:text-4xl', 'text-2xl md:text-3xl'];
+                    const size = sizes[index] || 'text-xl md:text-2xl';
+                    const opacities = ['opacity-100', 'opacity-90', 'opacity-80', 'opacity-70', 'opacity-60'];
+                    const opacity = opacities[index] || 'opacity-50';
+                    return (
+                      <div key={index} className={`font-black uppercase tracking-tighter flex justify-between items-end ${opacity} hover:opacity-100 transition-all hover:translate-x-2 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] group/term`}>
+                        <span className={`text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 ${size} leading-none truncate pr-4 drop-shadow-lg`}>{gap.name}</span>
+                        <span className="text-xs font-black text-slate-500 mb-2 group-hover/term:text-amber-500 transition-colors bg-white/5 px-2 py-1 rounded-md">{gap.percentage}%</span>
+                      </div>
+                    )
+                 }) : (
+                   <div className="text-[10px] font-black uppercase text-slate-600 tracking-widest text-center" style={{opacity: isPremium ? 1 : 0}}>No anomalies logged</div>
                  )}
 
-                 {/* Dummy data for the blur effect */}
                  {!isPremium && stats.topGaps.length === 0 && (
-                    <>
-                      <div className="bg-white/5 p-4 rounded-2xl"><div className="flex justify-between mb-3"><span className="font-black text-rose-300">TensorFlow</span></div><div className="h-1.5 bg-rose-500 w-4/5 rounded-full"></div></div>
-                      <div className="bg-white/5 p-4 rounded-2xl"><div className="flex justify-between mb-3"><span className="font-black text-orange-300">Docker</span></div><div className="h-1.5 bg-orange-500 w-3/5 rounded-full"></div></div>
-                      <div className="bg-white/5 p-4 rounded-2xl"><div className="flex justify-between mb-3"><span className="font-black text-amber-300">AWS</span></div><div className="h-1.5 bg-amber-500 w-1/3 rounded-full"></div></div>
-                    </>
-                 )}
-               </div>
-
-               {/* PAYWALL OVERLAY */}
-               {!isPremium && (
-                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md border border-white/5 p-8 text-center cursor-pointer group/lock" onClick={() => setShowUpgradeModal(true)}>
-                   <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(245,158,11,0.2)] group-hover/lock:scale-110 transition-transform border border-amber-500/20 backdrop-blur-sm relative overflow-hidden">
-                     <div className="absolute inset-0 bg-gradient-to-t from-amber-500/20 to-transparent"></div>
-                     <Lock className="text-amber-400 w-8 h-8 relative z-10 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+                   <div className="flex flex-col justify-center h-full gap-4 pointer-events-none">
+                     <div className="font-black uppercase tracking-tighter flex justify-between items-end opacity-100"><span className="text-rose-500 text-6xl md:text-7xl leading-none">PyTorch</span></div>
+                     <div className="font-black uppercase tracking-tighter flex justify-between items-end opacity-80"><span className="text-orange-500 text-5xl md:text-6xl leading-none">Docker</span></div>
+                     <div className="font-black uppercase tracking-tighter flex justify-between items-end opacity-60"><span className="text-amber-500 text-4xl md:text-5xl leading-none">AWS</span></div>
                    </div>
-                   <h4 className="text-xl font-black text-white mb-2 tracking-tighter uppercase drop-shadow-lg">Enterprise Key Required</h4>
-                   <p className="text-[10px] font-bold text-slate-400 mb-8 uppercase tracking-widest">Unlock Node Protocol</p>
-                   <button className="px-6 py-3 w-full bg-white text-orange-600 font-black rounded-xl text-xs shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all group-hover/lock:shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 uppercase tracking-widest">
-                     Activate
-                   </button>
-                 </div>
-               )}
-             </div>
+                 )}
+              </div>
+
+              {!isPremium && <div className="absolute inset-0 flex items-center justify-center z-20 backdrop-blur-sm"><div className="bg-[#0a0f1c]/90 rounded-[3rem] p-10 flex flex-col items-center border border-rose-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] hover:scale-110 transition-transform"><Lock className="w-16 h-16 text-rose-500 mb-6 drop-shadow-[0_0_20px_rgba(244,63,94,0.8)]" /><span className="text-[10px] font-black text-white uppercase tracking-widest border border-rose-500/50 px-6 py-3 rounded-xl shadow-inner bg-rose-500/10">Encrypted Nodes</span></div></div>}
+            </div>
           </div>
         </div>
 
@@ -674,29 +574,29 @@ export default function PartnerDashboard() {
 
       {/* --- UPGRADE TO PREMIUM MODAL --- */}
       {showUpgradeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in perspective-1000">
-          <div className="bg-[#0a0f1c]/90 backdrop-blur-3xl border border-white/10 rounded-[3rem] w-full max-w-md shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col relative animate-fade-in-up card-3d">
-            
-            <button onClick={() => setShowUpgradeModal(false)} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors z-10 bg-white/5 hover:bg-white/10 p-3 rounded-full hover:rotate-90 active:scale-90"><X size={16} /></button>
-            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500"></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#09090b]/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#121214] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col relative animate-slide-up">
 
-            <div className="p-12 text-center relative z-10">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-amber-500/10 blur-[100px] rounded-full pointer-events-none -z-10"></div>
-              
-              <div className="w-24 h-24 bg-gradient-to-tr from-amber-500 to-orange-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-[0_0_50px_rgba(245,158,11,0.5)] border border-white/20 animate-neon">
-                <Crown className="text-white w-12 h-12" />
+            <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10 p-2 rounded-full hover:bg-white/5"><X size={16} /></button>
+            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-600"></div>
+
+            <div className="p-10 text-center relative z-10 w-full">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-amber-500/10 blur-[80px] rounded-full pointer-events-none -z-10"></div>
+
+              <div className="w-20 h-20 bg-[#18181b] border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+                <Crown className="text-amber-500 w-10 h-10" />
               </div>
-              <h2 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase drop-shadow-md">Nexus Enterprise</h2>
-              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mb-8">Access Level: Denied</p>
-              
-              <ul className="text-left text-xs font-black text-slate-300 space-y-4 mb-10 bg-black/40 backdrop-blur-md p-6 rounded-3xl border border-white/5 shadow-inner uppercase tracking-widest">
-                <li className="flex items-center gap-3"><CheckCircle className="text-amber-400" size={16}/> Bulk Holographic Sync</li>
-                <li className="flex items-center gap-3"><CheckCircle className="text-amber-400" size={16}/> Node Gap Analytics</li>
-                <li className="flex items-center gap-3"><CheckCircle className="text-amber-400" size={16}/> Probability Matrices</li>
+              <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Premium Features</h2>
+              <p className="text-slate-400 text-sm mb-6">Upgrade to unlock enterprise scale tools.</p>
+
+              <ul className="text-left text-sm font-medium text-slate-300 space-y-4 mb-8 bg-white/[0.02] p-6 rounded-2xl border border-white/5">
+                <li className="flex items-center gap-3"><CheckCircle className="text-amber-500" size={16} /> Bulk CSV Cohort Onboarding</li>
+                <li className="flex items-center gap-3"><CheckCircle className="text-amber-500" size={16} /> Detailed Skill Gap Analytics</li>
+                <li className="flex items-center gap-3"><CheckCircle className="text-amber-500" size={16} /> Match Probability Reports</li>
               </ul>
 
-              <button onClick={() => {setShowUpgradeModal(false); alert("Enterprise Request Sent.");}} className="w-full bg-white hover:bg-slate-100 text-orange-600 font-black py-4 px-6 rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all flex justify-center items-center gap-3 uppercase tracking-widest text-xs hover:scale-105 active:scale-95">
-                Request Protocol <ArrowRight size={16}/>
+              <button onClick={() => { setShowUpgradeModal(false); alert("Enterprise Request Sent."); }} className="w-full bg-white hover:bg-slate-200 text-black font-semibold py-3 px-6 rounded-xl transition-colors flex justify-center items-center gap-2">
+                Request Upgrade <ArrowRight size={16} />
               </button>
             </div>
           </div>
@@ -705,44 +605,44 @@ export default function PartnerDashboard() {
 
       {/* --- CSV UPLOAD MODAL --- */}
       {showUploadModal && isPremium && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in perspective-1000">
-           <div className="bg-[#0a0f1c] border border-white/10 rounded-[3rem] w-full max-w-lg shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col animate-fade-in-up card-3d">
-             
-             <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-blue-500"></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#09090b]/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#121214] border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-slide-up">
 
-             <div className="px-10 py-8 border-b border-white/5 flex justify-between items-center bg-black/20">
-               <h3 className="text-xl font-black text-white flex items-center gap-3 tracking-tighter uppercase"><UploadCloud className="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" /> Entity Uplink</h3>
-               <button onClick={() => setShowUploadModal(false)} className="text-slate-500 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2.5 rounded-full hover:rotate-90"><X size={16} /></button>
-             </div>
-             
-             <div className="p-10 relative z-10">
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none -z-10"></div>
-               <p className="text-xs font-bold text-slate-400 mb-8 uppercase tracking-widest leading-relaxed text-center">Encrypt payload via CSV formatting. Destination Node: <strong className="text-amber-400">{tenantId}</strong>.</p>
-               
-               <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-[2.5rem] p-12 cursor-pointer transition-all duration-500 shadow-inner ${csvFile ? 'border-emerald-500/50 bg-emerald-500/10 shadow-[0_0_30px_rgba(16,185,129,0.1)]' : 'border-white/10 bg-black/40 hover:border-amber-500/50 hover:bg-white/5'}`}>
-                 <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
-                 {csvFile ? (
-                   <div className="text-center animate-fade-in-up"><CheckCircle className="text-emerald-400 w-16 h-16 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(16,185,129,0.6)]"/><p className="text-white text-sm font-black tracking-widest uppercase">{csvFile.name}</p></div>
-                 ) : (
-                   <div className="text-center"><UploadCloud className="text-slate-500 w-16 h-16 mx-auto mb-4 transition-transform group-hover:scale-110"/><p className="text-white text-sm font-black tracking-widest uppercase mb-1">Select Payload</p><p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">CSV strictly</p></div>
-                 )}
-               </label>
+            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-blue-500"></div>
 
-               {uploadMessage.text && (
-                 <div className={`mt-8 text-[10px] font-black p-4 rounded-xl text-center uppercase tracking-widest animate-fade-in-up ${uploadMessage.type === 'error' ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20' : uploadMessage.type === 'success' ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'}`}>
-                   {uploadMessage.text}
-                 </div>
-               )}
-             </div>
+            <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2 tracking-tight"><UploadCloud className="text-emerald-500" size={20} /> Bulk Onboarding</h3>
+              <button onClick={() => setShowUploadModal(false)} className="text-slate-400 hover:text-white transition-colors p-2 rounded-full hover:bg-white/5"><X size={16} /></button>
+            </div>
 
-             <div className="px-10 py-6 border-t border-white/5 bg-black/20 flex flex-col sm:flex-row justify-end gap-4">
-               <button onClick={() => setShowUploadModal(false)} className="px-6 py-4 text-xs font-black text-slate-400 hover:text-white transition-all uppercase tracking-widest rounded-xl hover:bg-white/5 w-full sm:w-auto text-center">Abort</button>
-               <button onClick={processBulkUpload} disabled={isUploading || !csvFile} className="bg-white text-slate-900 px-8 py-4 rounded-xl text-xs font-black transition-all disabled:opacity-50 disabled:grayscale flex justify-center items-center gap-3 hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] uppercase tracking-widest hover:scale-105 active:scale-95 w-full sm:w-auto">
-                 {isUploading ? <Activity size={16} className="animate-spin" /> : 'Execute Sync'}
-               </button>
-             </div>
-           </div>
-         </div>
+            <div className="p-8 relative z-10 w-full">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none -z-10"></div>
+              <p className="text-sm text-slate-400 mb-6 text-center">Upload a CSV file containing your student roster to onboard them to cohort <strong className="text-white font-semibold">{tenantId}</strong>.</p>
+
+              <label className={`flex flex-col items-center justify-center border border-dashed rounded-2xl p-10 cursor-pointer transition-colors ${csvFile ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/20 bg-white/[0.02] hover:border-emerald-500/50 hover:bg-white/5'}`}>
+                <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                {csvFile ? (
+                  <div className="text-center animate-fade-in"><CheckCircle className="text-emerald-500 w-12 h-12 mx-auto mb-3" /><p className="text-white text-sm font-medium">{csvFile.name}</p></div>
+                ) : (
+                  <div className="text-center"><UploadCloud className="text-slate-500 w-12 h-12 mx-auto mb-3" /><p className="text-white text-sm font-semibold mb-1">Select CSV file</p><p className="text-xs text-slate-500">.csv only max 5MB</p></div>
+                )}
+              </label>
+
+              {uploadMessage.text && (
+                <div className={`mt-6 text-xs font-semibold p-3 rounded-lg text-center ${uploadMessage.type === 'error' ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20' : uploadMessage.type === 'success' ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'}`}>
+                  {uploadMessage.text}
+                </div>
+              )}
+            </div>
+
+            <div className="px-8 py-5 border-t border-white/5 bg-white/[0.02] flex flex-col sm:flex-row justify-end gap-3">
+              <button onClick={() => setShowUploadModal(false)} className="px-5 py-2.5 text-sm font-medium text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 w-full sm:w-auto text-center">Cancel</button>
+              <button onClick={processBulkUpload} disabled={isUploading || !csvFile} className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 flex justify-center items-center gap-2 hover:bg-slate-200 w-full sm:w-auto">
+                {isUploading ? <Activity size={16} className="animate-spin" /> : 'Begin Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
