@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children, requireAdmin = false }) {
   // --- THE FIX: MAKE THE BOUNCER WAIT ---
   if (isFetchingRole) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+      <div className="min-h-screen bg-[#04060d] flex items-center justify-center">
          <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
       </div>
     );
