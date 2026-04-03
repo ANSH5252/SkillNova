@@ -188,7 +188,7 @@ export default function AdminDashboard() {
     });
   };
 
-  if (loading) return <div className="min-h-screen bg-[#0f172a] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div></div>;
+  if (loading) return <div className="min-h-screen bg-[#04060d] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div></div>;
 
   const pendingApps = applications.filter(app => app.status === 'pending');
   const processedApps = applications.filter(app => app.status !== 'pending');
@@ -197,7 +197,7 @@ export default function AdminDashboard() {
   const processedEmpApps = employerApps.filter(app => app.status !== 'pending');
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-200 p-8 font-sans">
+    <div className="min-h-screen bg-[#04060d] text-slate-200 p-8 font-sans">
       <style dangerouslySetInnerHTML={{
         __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }

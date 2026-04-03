@@ -259,7 +259,7 @@ export default function PartnerDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+      <div className="min-h-screen bg-[#04060d] flex items-center justify-center">
         <Activity className="text-indigo-500 animate-spin w-12 h-12" />
       </div>
     );
@@ -267,7 +267,7 @@ export default function PartnerDashboard() {
 
   if (errorMsg) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-[#04060d] flex flex-col items-center justify-center p-4">
         <AlertCircle className="text-rose-500 w-16 h-16 mb-4" />
         <h2 className="text-2xl font-bold text-white mb-2">Dashboard Error</h2>
         <p className="text-slate-400 text-center max-w-md mb-6">{errorMsg}</p>
@@ -277,7 +277,7 @@ export default function PartnerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-200 font-sans selection:bg-indigo-500/30 overflow-x-hidden flex flex-col relative">
+    <div className="min-h-screen bg-[#04060d] text-slate-200 font-sans selection:bg-indigo-500/30 overflow-x-hidden flex flex-col relative">
       <style>
         {`
           @keyframes splashFade {
@@ -319,7 +319,7 @@ export default function PartnerDashboard() {
       </style>
 
       {/* --- CINEMATIC SPLASH SCREEN --- */}
-      <div className="fixed inset-0 bg-[#0f172a] flex items-center justify-center animate-splash pointer-events-none z-[100]">
+      <div className="fixed inset-0 bg-[#04060d] flex items-center justify-center animate-splash pointer-events-none z-[100]">
         <SkillNovaLogo className="w-24 h-24 animate-star-entrance" />
       </div>
 
@@ -571,7 +571,7 @@ export default function PartnerDashboard() {
             <div className="overflow-x-auto overflow-y-auto max-h-[650px] pr-2 custom-scrollbar">
               <table className="w-full text-left table-fixed border-separate border-spacing-0 relative">
                 <thead className="sticky top-0 z-20">
-                  <tr className="bg-[#0f172a]/95 backdrop-blur-xl text-slate-400 text-[11px] uppercase tracking-[0.2em] font-black shadow-xl">
+                  <tr className="bg-[#04060d]/95 backdrop-blur-xl text-slate-400 text-[11px] uppercase tracking-[0.2em] font-black shadow-xl">
                     <th className="py-5 pl-6 w-[35%] rounded-tl-2xl border-b border-white/5">Student Entity</th>
                     <th className="py-5 pr-2 w-[25%] border-b border-white/5">Specialization</th>
                     {isPremium && (
