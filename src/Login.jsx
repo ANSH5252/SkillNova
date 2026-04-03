@@ -29,7 +29,6 @@ export default function Login() {
   const [isStudentSignUp, setIsStudentSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [partnerStep, setPartnerStep] = useState(1); 
   const [partnerStatus, setPartnerStatus] = useState(null); 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -129,59 +128,56 @@ export default function Login() {
     }
   };
 
-  const handlePartnerEmailCheck = async (e) => {
+  const handlePartnerCombinedSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setLoading(true);
+
+    let proceedToAuth = true;
 
     try {
       const adminDoc = await getDoc(doc(db, 'admins', email.toLowerCase()));
-      if (adminDoc.exists()) {
-        setPartnerStep(2);
-        setLoading(false);
-        return;
-      }
-
-      const q = query(collection(db, 'partner_applications'), where('email', '==', email.toLowerCase()));
-      const snap = await getDocs(q);
-      
-      if (!snap.empty) {
-        const appStatus = snap.docs[0].data().status;
-        if (appStatus === 'pending') setPartnerStatus('pending');
-        else if (appStatus === 'rejected') setPartnerStatus('rejected');
-        else setPartnerStep(2); 
-      } else {
-        setPartnerStep(2); 
-      }
-    } catch (err) {
-      console.error(err);
-      setPartnerStep(2); 
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePartnerFinalSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      await checkAdminAndRoute(userCredential.user.email);
-    } catch (err) {
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-          try {
-            const newUser = await createUserWithEmailAndPassword(auth, email, password);
-            await checkAdminAndRoute(newUser.user.email);
-          } catch (createError) {
-            setErrorMsg(createError.code === 'auth/email-already-in-use' ? "Incorrect password." : "Access Denied.");
+      if (!adminDoc.exists()) {
+        const q = query(collection(db, 'partner_applications'), where('email', '==', email.toLowerCase()));
+        const snap = await getDocs(q);
+        
+        if (!snap.empty) {
+          const appStatus = snap.docs[0].data().status;
+          if (appStatus === 'pending') {
+             setPartnerStatus('pending');
+             proceedToAuth = false;
           }
-      } else {
-          setErrorMsg("Invalid credentials. Accounts must be pre-approved.");
+          else if (appStatus === 'rejected') {
+             setPartnerStatus('rejected');
+             proceedToAuth = false;
+          }
+        }
       }
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("Error checking application status:", err);
+      // Ignore Firestore permission errors before login, fallback to login attempt.
+      proceedToAuth = true;
     }
+
+    if (proceedToAuth) {
+       try {
+         const userCredential = await signInWithEmailAndPassword(auth, email, password);
+         await checkAdminAndRoute(userCredential.user.email);
+       } catch (err) {
+         if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+             try {
+               const newUser = await createUserWithEmailAndPassword(auth, email, password);
+               await checkAdminAndRoute(newUser.user.email);
+             } catch (createError) {
+               setErrorMsg(createError.code === 'auth/email-already-in-use' ? "Incorrect password." : "Access Denied.");
+             }
+         } else {
+             setErrorMsg("Invalid credentials. Accounts must be pre-approved.");
+         }
+       }
+    }
+    
+    setLoading(false);
   };
 
   // --- DYNAMIC CONTENT BUILDERS ---
@@ -337,15 +333,15 @@ export default function Login() {
               <div className="relative flex items-center p-1.5 bg-black/40 border border-white/10 rounded-full mb-8 w-full shadow-inner overflow-hidden">
                 <div className={`absolute top-1.5 bottom-1.5 left-1.5 w-[calc(33.333%-4px)] rounded-full border transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] ${getSliderTranslate()} ${getSliderColor()}`}></div>
                 
-                <button type="button" onClick={() => { setActiveTab('student'); setErrorMsg(''); setPartnerStep(1); }} className={`relative z-10 flex-1 py-2 rounded-full text-xs font-bold transition-colors duration-300 flex items-center justify-center gap-1.5 ${activeTab === 'student' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
+                <button type="button" onClick={() => { setActiveTab('student'); setErrorMsg(''); }} className={`relative z-10 flex-1 py-2 rounded-full text-xs font-bold transition-colors duration-300 flex items-center justify-center gap-1.5 ${activeTab === 'student' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
                   <span className="truncate">Student</span>
                 </button>
 
-                <button type="button" onClick={() => { setActiveTab('partner'); setErrorMsg(''); setPartnerStep(1); }} className={`relative z-10 flex-1 py-2 rounded-full text-xs font-bold transition-colors duration-300 flex items-center justify-center gap-1.5 ${activeTab === 'partner' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
+                <button type="button" onClick={() => { setActiveTab('partner'); setErrorMsg(''); }} className={`relative z-10 flex-1 py-2 rounded-full text-xs font-bold transition-colors duration-300 flex items-center justify-center gap-1.5 ${activeTab === 'partner' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
                   <span className="truncate">University</span>
                 </button>
 
-                <button type="button" onClick={() => { setActiveTab('employer'); setErrorMsg(''); setPartnerStep(1); }} className={`relative z-10 flex-1 py-2 rounded-full text-xs font-bold transition-colors duration-300 flex items-center justify-center gap-1.5 ${activeTab === 'employer' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
+                <button type="button" onClick={() => { setActiveTab('employer'); setErrorMsg(''); }} className={`relative z-10 flex-1 py-2 rounded-full text-xs font-bold transition-colors duration-300 flex items-center justify-center gap-1.5 ${activeTab === 'employer' ? 'text-white drop-shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
                   <span className="truncate">Employer</span>
                 </button>
               </div>
@@ -362,7 +358,7 @@ export default function Login() {
                   <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><Clock className="text-amber-400 w-8 h-8" /></div>
                   <h3 className="text-xl font-bold text-white mb-2">Review in Progress</h3>
                   <p className="text-sm text-slate-400 mb-6 px-4">Your application for <strong className="text-slate-200">{email}</strong> is securely under review by administrators.</p>
-                  <button onClick={() => {setPartnerStatus(null); setPartnerStep(1); setEmail('');}} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-colors">Use a different account</button>
+                  <button onClick={() => {setPartnerStatus(null); setEmail(''); setPassword('');}} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-colors">Use a different account</button>
                 </div>
               )}
 
@@ -371,78 +367,64 @@ export default function Login() {
                   <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><XCircle className="text-rose-400 w-8 h-8" /></div>
                   <h3 className="text-xl font-bold text-white mb-2">Access Declined</h3>
                   <p className="text-sm text-slate-400 mb-6 px-4">Your application for access could not be verified at this time.</p>
-                  <button onClick={() => {setPartnerStatus(null); setPartnerStep(1); setEmail('');}} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-colors">Return to Login</button>
+                  <button onClick={() => {setPartnerStatus(null); setEmail(''); setPassword('');}} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-colors">Return to Login</button>
                 </div>
               )}
 
               {/* ENTERPRISE / EMPLOYER LOGIN FLOW */}
               {(activeTab === 'partner' || activeTab === 'employer') && partnerStatus === null && (
                 <div className="animate-fade-in">
-                  {partnerStep === 1 ? (
-                    <form onSubmit={handlePartnerEmailCheck} className="space-y-5">
-                      <div>
-                        <label className="block text-slate-400 text-xs font-bold mb-2 uppercase tracking-wider">
-                          {activeTab === 'employer' ? 'Work Email Address' : 'Institutional Email'}
-                        </label>
-                        <div className="relative group">
-                          <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors ${activeTab === 'employer' ? 'group-focus-within:text-emerald-400' : 'group-focus-within:text-amber-400'}`} size={18} />
-                          <input 
-                            type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)}
-                            className={`w-full bg-slate-900/40 border border-slate-700/50 rounded-xl py-3.5 pl-11 pr-4 text-white outline-none transition-colors shadow-inner
-                              ${activeTab === 'employer' ? 'focus:border-emerald-500/50 hover:bg-slate-900/60' : 'focus:border-amber-500/50 hover:bg-slate-900/60'}`}
-                            placeholder={activeTab === 'employer' ? "hr@company.com" : "admin@university.edu"}
-                          />
-                        </div>
+                  <form onSubmit={handlePartnerCombinedSubmit} className="space-y-5">
+                    <div>
+                      <label className="block text-slate-400 text-xs font-bold mb-2 uppercase tracking-wider">
+                        {activeTab === 'employer' ? 'Work Email Address' : 'Institutional Email'}
+                      </label>
+                      <div className="relative group">
+                        <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors ${activeTab === 'employer' ? 'group-focus-within:text-emerald-400' : 'group-focus-within:text-amber-400'}`} size={18} />
+                        <input 
+                          type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)}
+                          className={`w-full bg-slate-900/40 border border-slate-700/50 rounded-xl py-3.5 pl-11 pr-4 text-white outline-none transition-colors shadow-inner
+                            ${activeTab === 'employer' ? 'focus:border-emerald-500/50 hover:bg-slate-900/60' : 'focus:border-amber-500/50 hover:bg-slate-900/60'}`}
+                          placeholder={activeTab === 'employer' ? "hr@company.com" : "admin@university.edu"}
+                        />
                       </div>
-                      <button 
-                        type="submit" disabled={loading || !email} 
-                        className={`w-full text-white font-black py-4 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg mt-5 transition-all hover:scale-[1.01]
-                          ${activeTab === 'employer' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25' : 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/25'}`}
-                      >
-                        {loading ? <Activity size={18} className="animate-spin" /> : <>Continue Securely <ArrowRight size={18} /></>}
-                      </button>
-                      
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 text-xs font-bold mb-2 uppercase tracking-wider">Password</label>
+                      <div className="relative group">
+                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors ${activeTab === 'employer' ? 'group-focus-within:text-emerald-400' : 'group-focus-within:text-amber-400'}`} size={18} />
+                        <input 
+                          type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)}
+                          className={`w-full bg-slate-900/40 border border-slate-700/50 rounded-xl py-3.5 pl-11 pr-11 text-white outline-none transition-colors shadow-inner
+                            ${activeTab === 'employer' ? 'focus:border-emerald-500/50 hover:bg-slate-900/60' : 'focus:border-amber-500/50 hover:bg-slate-900/60'}`} 
+                          placeholder="••••••••"
+                        />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button 
+                      type="submit" disabled={loading || !email || !password} 
+                      className={`w-full text-white font-black py-4 px-4 rounded-xl flex items-center justify-center mt-5 shadow-lg transition-all hover:scale-[1.01] disabled:opacity-50
+                        ${activeTab === 'employer' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25' : 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/25'}`}
+                    >
+                      {loading ? <Activity size={18} className="animate-spin" /> : <><ShieldCheck size={18} className="mr-2"/> Secure Login</>}
+                    </button>
+                    
+                    <Divider />
+                    <GoogleButton />
+
+                    <div className="text-center mt-6 space-y-3 flex flex-col">
                       {activeTab === 'partner' && (
-                        <div className="text-center mt-4">
-                           <Link to="/apply" className="text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors underline underline-offset-4">Not whitelisted yet? Request Enterprise Access</Link>
-                        </div>
+                         <Link to="/apply" className="text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors underline underline-offset-4">Join our network? Apply as a University</Link>
                       )}
-                      
-                      <Divider />
-                      <GoogleButton />
-                    </form>
-                  ) : (
-                    <form onSubmit={handlePartnerFinalSubmit} className="animate-fade-in space-y-5">
-                      <div className="flex items-center justify-between bg-slate-900/40 border border-slate-700/50 p-3 rounded-xl mb-4 shadow-inner">
-                        <span className="text-sm text-slate-300 truncate max-w-[200px]">{email}</span>
-                        <button type="button" onClick={() => setPartnerStep(1)} className={`text-xs font-bold transition-colors ${activeTab === 'employer' ? 'text-emerald-400 hover:text-emerald-300' : 'text-amber-400 hover:text-amber-300'}`}>Edit</button>
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 text-xs font-bold mb-2 uppercase tracking-wider">Password</label>
-                        <div className="relative group">
-                          <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors ${activeTab === 'employer' ? 'group-focus-within:text-emerald-400' : 'group-focus-within:text-amber-400'}`} size={18} />
-                          <input 
-                            type={showPassword ? 'text' : 'password'} required autoFocus value={password} onChange={(e) => setPassword(e.target.value)}
-                            className={`w-full bg-slate-900/40 border border-slate-700/50 rounded-xl py-3.5 pl-11 pr-11 text-white outline-none transition-colors shadow-inner
-                              ${activeTab === 'employer' ? 'focus:border-emerald-500/50 hover:bg-slate-900/60' : 'focus:border-amber-500/50 hover:bg-slate-900/60'}`} 
-                            placeholder="••••••••"
-                          />
-                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
-                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                          </button>
-                        </div>
-                      </div>
-                      <button 
-                        type="submit" disabled={loading || !password} 
-                        className={`w-full text-white font-black py-4 px-4 rounded-xl flex items-center justify-center mt-5 shadow-lg transition-all hover:scale-[1.01]
-                          ${activeTab === 'employer' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25' : 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/25'}`}
-                      >
-                        {loading ? <Activity size={18} className="animate-spin" /> : <><ShieldCheck size={18} className="mr-2"/> Secure Login</>}
-                      </button>
-                      <Divider />
-                      <GoogleButton />
-                    </form>
-                  )}
+                      {activeTab === 'employer' && (
+                         <Link to="/apply" className="text-xs font-bold text-emerald-500 hover:text-emerald-400 transition-colors underline underline-offset-4">Looking to hire? Apply for an Employer Account</Link>
+                      )}
+                    </div>
+                  </form>
                 </div>
               )}
 
